@@ -413,7 +413,9 @@ button:disabled{opacity:1;}
 }
 .fc-reveal-btn:hover{opacity:.92;}
 .fc-reveal-btn[hidden]{display:none;}
-.fc-answer-wrap{animation:fadeIn .3s ease;}
+.fc-answer-wrap{animation:fadeIn .3s ease;cursor:pointer;}
+.fc-answer-wrap:active .fc-answer-box{opacity:.8;}
+.fc-answer-item{margin-top:.8rem;}
 .fc-answer-box{
   background:var(--paper-sunken);
   border:1px solid var(--line);
@@ -996,6 +998,44 @@ function startQuiz(mode, bookIndex, topicIndex){
   renderQuestion();
 }
 
+function splitAnswerItems(aText, n){
+  if(n <= 1 || aText.indexOf("\n") !== -1) return null;
+  var bounds = [];
+  var searchFrom = 0;
+  for(var expected = 2; expected <= n; expected++){
+    var re = new RegExp("[、；]" + expected + "(?=\\D|$)");
+    var m = re.exec(aText.slice(searchFrom));
+    if(!m) return null;
+    var pos = searchFrom + m.index;
+    bounds.push(pos);
+    searchFrom = pos + m[0].length;
+  }
+  var itemsFrom2 = [];
+  for(var idx=0; idx<bounds.length; idx++){
+    var start = bounds[idx] + 1;
+    var end = (idx+1 < bounds.length) ? bounds[idx+1] : aText.length;
+    itemsFrom2.push(aText.slice(start, end));
+  }
+  var prefix = aText.slice(0, bounds[0]);
+  var lead, item1;
+  var m2 = /：1(?=\D|$)/.exec(prefix);
+  if(m2){
+    lead = prefix.slice(0, m2.index+1);
+    item1 = prefix.slice(m2.index+1);
+  } else if(prefix.indexOf("1") === 0){
+    lead = "";
+    item1 = prefix;
+  } else {
+    var re1 = /1(?=\D|$)/g;
+    var mm, last = null;
+    while((mm = re1.exec(prefix)) !== null){ last = mm; }
+    if(!last) return null;
+    lead = prefix.slice(0, last.index);
+    item1 = prefix.slice(last.index);
+  }
+  return {lead: lead, items: [item1].concat(itemsFrom2)};
+}
+
 function renderFlashcardTopicList(book, bp){
   var visited = 0;
   var totalCards = 0;
@@ -1074,7 +1114,18 @@ function renderFlashcard(){
   $("flashcardProgress").textContent = (state.ci+1) + " / " + total;
   $("flashcardTopicTag").textContent = numStr + " · " + c.topicTag;
   $("fcQuestion").textContent = c.q;
-  $("fcAnswerBox").textContent = "答案：" + c.a;
+  var nMatch = /（(\d+)）\s*$/.exec(c.q);
+  var nAns = nMatch ? parseInt(nMatch[1],10) : 1;
+  var split = splitAnswerItems(c.a, nAns);
+  if(split){
+    var html = "答案：" + escapeHtml(split.lead);
+    split.items.forEach(function(it){
+      html += '<div class="fc-answer-item">' + escapeHtml(it) + '</div>';
+    });
+    $("fcAnswerBox").innerHTML = html;
+  } else {
+    $("fcAnswerBox").textContent = "答案：" + c.a;
+  }
   $("fcExplain").textContent = c.explain || "";
   $("fcAnswerWrap").hidden = true;
   $("fcRevealBtn").hidden = false;
@@ -1321,6 +1372,7 @@ $("flashcardBack").addEventListener("click", function(){
   openBook(state.bookIndex);
 });
 $("fcRevealBtn").addEventListener("click", revealFlashcardAnswer);
+$("fcAnswerWrap").addEventListener("click", nextFlashcard);
 $("fcPrevBtn").addEventListener("click", prevFlashcard);
 $("fcNextBtn").addEventListener("click", nextFlashcard);
 $("quizBack").addEventListener("click", function(){
