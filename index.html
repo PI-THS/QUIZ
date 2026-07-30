@@ -729,6 +729,59 @@ button:disabled{opacity:1;}
 .dbq-return{display:block;width:100%;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;color:#fff;background:#C0396E;border:0;padding:.55rem .8rem;text-align:center;}
 @media (max-width:30rem){.dbq-panel,.dbq-reveal,.dbq-note{margin-left:0;}}
 
+
+/* ---------- 主頁精簡版 ---------- */
+.hero-lean{padding-top:1.6rem;padding-bottom:.4rem;}
+.hero-lean h1{margin-bottom:0;}
+.home-group{
+  font-weight:800;font-size:.92rem;letter-spacing:.14em;
+  color:var(--ink-soft);margin:1.5rem 0 .55rem;
+  display:flex;align-items:center;gap:.7rem;
+}
+.home-group::before,.home-group::after{
+  content:"";flex:1;height:1px;background:var(--line);
+}
+.gate.lean{padding-top:1.05rem;padding-bottom:1.05rem;}
+.gate.lean .gate-title{margin:0;}
+
+/* ---------- 老師面板 ---------- */
+.tc-body{padding:.8rem 1rem 3rem;}
+.tc-refresh{margin-left:auto;font:inherit;font-size:1.15rem;cursor:pointer;
+  background:none;border:0;color:var(--ink-soft);padding:.2rem .5rem;}
+.tc-sort{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem;}
+.tc-sortbtn{font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;
+  color:var(--ink-soft);background:var(--paper-raised);border:1px solid var(--line);
+  border-radius:999px;padding:.32rem .75rem;}
+.tc-sortbtn.on{color:#fff;background:var(--ink);border-color:var(--ink);}
+.tc-hint{font-size:.78rem;color:var(--ink-faint);margin:.2rem 0 .7rem;}
+.tc-list{display:flex;flex-direction:column;gap:.45rem;}
+.tc-row{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;
+  font:inherit;cursor:pointer;background:var(--paper-raised);
+  border:1px solid var(--line);border-radius:9px;padding:.7rem .8rem;}
+.tc-row:hover{border-color:var(--ink-faint);}
+.tc-nm{font-weight:800;font-size:.95rem;letter-spacing:.04em;min-width:4.2rem;}
+.tc-meta{flex:1;font-size:.76rem;color:var(--ink-soft);line-height:1.5;}
+.tc-badge{font-size:.72rem;font-weight:700;border-radius:999px;
+  padding:.16rem .5rem;white-space:nowrap;}
+.tc-badge.zero{color:#8C6A2B;background:#F6EBD4;}
+.tc-badge.some{color:#2A6182;background:#E2EEF5;}
+.tc-badge.good{color:#1F6B45;background:#DDF0E5;}
+.tc-sec{font-weight:800;font-size:.86rem;margin:1.1rem 0 .45rem;color:var(--ink);}
+.tc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.4rem,1fr));gap:.4rem;}
+.tc-cell{background:var(--paper-raised);border:1px solid var(--line);
+  border-radius:8px;padding:.5rem .3rem;text-align:center;}
+.tc-cell b{display:block;font-size:1.05rem;}
+.tc-cell span{font-size:.68rem;color:var(--ink-soft);}
+.tc-cell.dim b{color:var(--ink-faint);}
+.tc-kv{display:flex;justify-content:space-between;gap:.8rem;
+  padding:.5rem .1rem;border-bottom:1px dashed var(--line);font-size:.85rem;}
+.tc-kv:last-child{border-bottom:0;}
+.tc-kv b{font-weight:700;}
+
+/* DSE實戰 用金色系,同「溫書部分」嘅藍色分開 */
+.gate.tone-dse{background:var(--gold-soft);border-color:var(--gold);}
+.gate.tone-dse::before{background:linear-gradient(135deg,#F5D678,#D9A94F,#8C2B32);}
+.gate.tone-dse .gate-title{color:var(--gold-ink,var(--ink));}
 </style>
 
 <div class="app">
@@ -744,6 +797,30 @@ button:disabled{opacity:1;}
         <p class="gate-hint" id="loginStatus"></p>
       </div>
     </section>
+    <section id="screen-teacher" class="screen">
+      <div class="bar">
+        <button class="back-btn" id="teacherBack" aria-label="返回">←</button>
+        <div class="bar-title">全班進度</div>
+        <button class="tc-refresh" id="teacherRefresh" aria-label="重新整理">↻</button>
+      </div>
+      <div class="tc-body">
+        <div class="tc-sort" id="tcSort">
+          <button class="tc-sortbtn on" data-sort="name">姓名</button>
+          <button class="tc-sortbtn" data-sort="lv">總LV</button>
+          <button class="tc-sortbtn" data-sort="mc">MC卷數</button>
+          <button class="tc-sortbtn" data-sort="time">最後溫習</button>
+        </div>
+        <p class="tc-hint" id="tcHint">載入中…</p>
+        <div class="tc-list" id="tcList"></div>
+      </div>
+    </section>
+    <section id="screen-teacher-one" class="screen">
+      <div class="bar">
+        <button class="back-btn" id="teacherOneBack" aria-label="返回">←</button>
+        <div class="bar-title" id="tcOneName">學生</div>
+      </div>
+      <div class="tc-body" id="tcOneBody"></div>
+    </section>
     <section id="screen-gate" class="screen active">
     <div class="gate-body">
       <div class="gate-seal">🔒</div>
@@ -756,84 +833,27 @@ button:disabled{opacity:1;}
   </section>
 
   <section id="screen-home" class="screen">
-    <div class="hero">
-      <div class="seal">
-        <svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="bookCover" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#8C2B32"/>
-              <stop offset="55%" stop-color="#6E1B22"/>
-              <stop offset="100%" stop-color="#4A1015"/>
-            </linearGradient>
-            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#F5D678"/>
-              <stop offset="50%" stop-color="#D9A94F"/>
-              <stop offset="100%" stop-color="#B8860B"/>
-            </linearGradient>
-            <radialGradient id="bgGlow" cx="50%" cy="46%" r="62%">
-              <stop offset="0%" stop-color="#D9A94F" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="#D9A94F" stop-opacity="0"/>
-            </radialGradient>
-            <filter id="logoSoftGlow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="2.2" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-          <circle cx="120" cy="120" r="114" fill="url(#bgGlow)"/>
-          <!-- pages behind cover -->
-          <rect x="74" y="34" width="100" height="176" rx="7" fill="#E8DCC0"/>
-          <rect x="70" y="30" width="100" height="176" rx="7" fill="#F3EAD3"/>
-          <!-- book cover -->
-          <rect x="64" y="24" width="102" height="180" rx="8" fill="url(#bookCover)" stroke="url(#goldGrad)" stroke-width="3"/>
-          <!-- spine binding -->
-          <line x1="78" y1="26" x2="78" y2="202" stroke="url(#goldGrad)" stroke-width="1.6" opacity="0.85"/>
-          <circle cx="78" cy="52" r="2.4" fill="url(#goldGrad)"/>
-          <circle cx="78" cy="114" r="2.4" fill="url(#goldGrad)"/>
-          <circle cx="78" cy="176" r="2.4" fill="url(#goldGrad)"/>
-          <!-- inner gold frame -->
-          <rect x="88" y="36" width="66" height="156" rx="4" fill="none" stroke="url(#goldGrad)" stroke-width="1.3" opacity="0.9"/>
-          <!-- vertical title 溫習神器 -->
-          <text x="121" y="66" text-anchor="middle" font-family="'Songti TC','Songti SC','Noto Serif TC',serif" font-weight="900" font-size="30" fill="url(#goldGrad)" filter="url(#logoSoftGlow)">溫</text>
-          <text x="121" y="100" text-anchor="middle" font-family="'Songti TC','Songti SC','Noto Serif TC',serif" font-weight="900" font-size="30" fill="url(#goldGrad)" filter="url(#logoSoftGlow)">習</text>
-          <text x="121" y="134" text-anchor="middle" font-family="'Songti TC','Songti SC','Noto Serif TC',serif" font-weight="900" font-size="30" fill="url(#goldGrad)" filter="url(#logoSoftGlow)">神</text>
-          <text x="121" y="168" text-anchor="middle" font-family="'Songti TC','Songti SC','Noto Serif TC',serif" font-weight="900" font-size="30" fill="url(#goldGrad)" filter="url(#logoSoftGlow)">器</text>
-          <!-- red seal with YHP -->
-          <rect x="132" y="172" width="26" height="26" rx="3" fill="#C0392B" stroke="#F5D678" stroke-width="1.2"/>
-          <text x="145" y="190" text-anchor="middle" font-family="'TicketMono','SF Mono',Menlo,Consolas,monospace" font-weight="700" font-size="10.5" fill="#F9EFD8">YHP</text>
-          <!-- corner caps -->
-          <path d="M64,44 L64,32 A8,8 0 0 1 72,24 L84,24" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"/>
-          <path d="M146,24 L158,24 A8,8 0 0 1 166,32 L166,44" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"/>
-          <path d="M166,184 L166,196 A8,8 0 0 1 158,204 L146,204" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"/>
-          <path d="M84,204 L72,204 A8,8 0 0 1 64,196 L64,184" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"/>
-        </svg>
-      </div>
-      <h1><span class="sub">旅遊與款待科</span><span class="accent-word">溫習神器</span></h1>
-      <p>揀一部秘笈,開始今日嘅修練</p>
-      <p class="captain-note">YHP是你的師父,佢會傳授大家5**神功。每溫完一個小單元升1級,由LV.0練到上限LV.99,睇下自己每一式練咗幾多次!</p>
+    <div class="hero hero-lean">
+      <h1><span class="accent-word">YHP的溫習神器</span></h1>
     </div>
 
-    <div class="section-label">Choose Your Training</div>
     <p class="pass-rule" id="syncStatus"></p>
+    <div class="home-group">溫書部分</div>
     <div class="gates aircraft-gates" id="aircraftList">
-      <button class="gate special" data-aircraft="review">
-        <span class="gate-code">神功 01 · 修練</span>
-        <span class="gate-title">概念神功</span>
-        <span class="gate-sub">四冊秘笈 · 69式 · 每溫完一式升1級</span>
+      <button class="gate special lean" data-aircraft="review">
+        <span class="gate-title">概念重溫</span>
       </button>
-      <button class="gate special" data-aircraft="dse">
-        <span class="gate-code">實戰 02 · DSEMC</span>
-        <span class="gate-title">DSE MC</span>
-        <span class="gate-sub">2018-2025年 甲部多項選擇題</span>
+    </div>
+    <div class="home-group">DSE實戰</div>
+    <div class="gates aircraft-gates" id="aircraftList2">
+      <button class="gate special lean tone-dse" data-aircraft="dse">
+        <span class="gate-title">卷一MC</span>
       </button>
-      <button class="gate special" data-aircraft="p2">
-        <span class="gate-code">心法 03 · 卷二論述</span>
-        <span class="gate-title">卷二拆題</span>
-        <span class="gate-sub">乙部論述題 · 逐步拆解 + 範文</span>
+      <button class="gate special lean tone-dse" data-aircraft="dbq">
+        <span class="gate-title">卷一DBQ</span>
       </button>
-      <button class="gate special" data-aircraft="dbq">
-        <span class="gate-code">實戰 04 · 卷一資料題</span>
-        <span class="gate-title">資料回應題</span>
-        <span class="gate-sub">睇資料搵線索 + 課本概念 · 雙軌拆解</span>
+      <button class="gate special lean tone-dse" data-aircraft="p2">
+        <span class="gate-title">卷二</span>
       </button>
     </div>
   </section>
@@ -1989,7 +2009,7 @@ $("p2EssaySec").addEventListener("click", function(ev){
   renderP2Detail();
 });
 
-var aircraftBtns = document.querySelectorAll("#aircraftList .gate");
+var aircraftBtns = document.querySelectorAll("#aircraftList .gate, #aircraftList2 .gate");
 aircraftBtns.forEach(function(btn){
   btn.addEventListener("click", function(){
     var kind = btn.getAttribute("data-aircraft");
@@ -2009,6 +2029,130 @@ aircraftBtns.forEach(function(btn){
 });
 
 
+
+
+/* ============ 老師面板（登入打 check 進入） ============ */
+var TEACHER_WORD = "check";
+var tcData = null, tcSort = "name";
+
+function tcNum(v){ var n = Number(v); return isNaN(n) ? 0 : n; }
+
+/* Apps Script 有時會傳返 ISO 時間字串（instanceof Date 喺 V8 判斷唔到），
+   喺呢邊統一轉成「7月30日 12:54」,唔使再靠後端格式化。 */
+function tcTime(v){
+  var t = String(v == null ? "" : v).trim();
+  if(!t || t === "未開始") return t || "—";
+  var m = t.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if(!m) return t;
+  var d = new Date(t);
+  if(isNaN(d.getTime())) return t;
+  return (d.getMonth()+1) + "月" + d.getDate() + "日 " +
+         ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2);
+}
+
+function openTeacher(){
+  showScreen("screen-teacher");
+  loadTeacher();
+}
+
+function loadTeacher(){
+  if(!SYNC_URL){ $("tcHint").textContent = "未設定同步網址,睇唔到雲端資料。"; return; }
+  $("tcHint").textContent = "載入中…";
+  $("tcList").innerHTML = "";
+  fetch(SYNC_URL + "?key=" + encodeURIComponent(SYNC_KEY) + "&all=1")
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || !d.ok){ $("tcHint").textContent = "讀取失敗:" + ((d&&d.err)||"未知"); return; }
+      // 只顯示班名單上嘅人：Sheet 可能有測試／舊資料殘留,唔想混入全班統計
+      tcData = (d.students || []).filter(function(x){
+        return STUDENTS.indexOf(String(x["姓名"]).trim()) >= 0;
+      });
+      renderTeacher();
+    })
+    .catch(function(){ $("tcHint").textContent = "連線唔到,檢查網絡。"; });
+}
+
+function renderTeacher(){
+  if(!tcData){ return; }
+  var arr = tcData.slice();
+  if(tcSort === "lv")        arr.sort(function(a,b){ return tcNum(b["總LV"]) - tcNum(a["總LV"]); });
+  else if(tcSort === "mc")   arr.sort(function(a,b){ return tcNum(b["MC已做卷"]) - tcNum(a["MC已做卷"]); });
+  else if(tcSort === "time") arr.sort(function(a,b){ return String(b["最後同步"]).localeCompare(String(a["最後同步"])); });
+  else                       arr.sort(function(a,b){ return String(a["姓名"]).localeCompare(String(b["姓名"])); });
+
+  var started = arr.filter(function(x){ return tcNum(x["總LV"]) > 0 || tcNum(x["MC已做卷"]) > 0; }).length;
+  $("tcHint").textContent = "全班 " + arr.length + " 人,已開始 " + started + " 人,未開始 " + (arr.length - started) + " 人";
+
+  var h = "";
+  arr.forEach(function(st){
+    var lv = tcNum(st["總LV"]), topics = tcNum(st["已溫課題"]);
+    var mcP = tcNum(st["MC已做卷"]), mcA = st["MC平均分"], lvl = st["MC等級"];
+    var cls = lv === 0 && mcP === 0 ? "zero" : (lv >= 20 || mcP >= 3 ? "good" : "some");
+    var badge = lv === 0 && mcP === 0 ? "未開始" : ("LV " + lv);
+    var bits = [];
+    bits.push("已溫 " + topics + " 課");
+    if(mcP > 0) bits.push("MC " + mcP + "卷 · 平均" + mcA + (lvl ? " (" + lvl + ")" : ""));
+    bits.push(tcTime(st["最後同步"]));
+    h += '<button class="tc-row" data-tc="' + escapeHtml(String(st["姓名"])) + '">' +
+           '<span class="tc-nm">' + escapeHtml(String(st["姓名"])) + '</span>' +
+           '<span class="tc-meta">' + escapeHtml(bits.join("　·　")) + '</span>' +
+           '<span class="tc-badge ' + cls + '">' + badge + '</span>' +
+         '</button>';
+  });
+  $("tcList").innerHTML = h;
+}
+
+function openTeacherOne(name){
+  var st = null;
+  (tcData || []).forEach(function(x){ if(String(x["姓名"]) === name) st = x; });
+  if(!st) return;
+  $("tcOneName").textContent = name;
+
+  var h = '<div class="tc-sec">概念重溫</div><div class="tc-grid">';
+  [["第1冊LV","第1冊"],["第2冊LV","第2冊"],["第3冊LV","第3冊"],["第4冊LV","第4冊"]].forEach(function(p){
+    var v = tcNum(st[p[0]]);
+    h += '<div class="tc-cell' + (v ? "" : " dim") + '"><b>' + v + '</b><span>' + p[1] + '</span></div>';
+  });
+  h += '</div>';
+
+  h += '<div class="tc-sec">卷一 MC（每年最高題數 / 30）</div><div class="tc-grid">';
+  [2018,2019,2020,2021,2022,2023,2024,2025].forEach(function(y){
+    var v = st["MC" + y];
+    var has = v !== "" && v !== null && v !== undefined;
+    h += '<div class="tc-cell' + (has ? "" : " dim") + '"><b>' + (has ? v : "—") + '</b><span>' + y + '</span></div>';
+  });
+  h += '</div>';
+
+  h += '<div class="tc-sec">總覽</div>';
+  [["總LV","總LV"],["已溫課題","已溫課題"],["MC已做卷","MC已做卷"],
+   ["MC平均分","MC平均分"],["MC等級","MC等級"],
+   ["卷一DBQ步驟","卷一DBQ步驟"],["卷二分題","卷二分題"],
+   ["同步次數","同步次數"],["最後同步","最後同步"]].forEach(function(p){
+    var v = st[p[0]];
+    if(p[0] === "最後同步") v = tcTime(v);
+    h += '<div class="tc-kv"><span>' + p[1] + '</span><b>' + escapeHtml(String(v === "" || v == null ? "—" : v)) + '</b></div>';
+  });
+
+  $("tcOneBody").innerHTML = h;
+  showScreen("screen-teacher-one");
+}
+
+$("tcList").addEventListener("click", function(ev){
+  var b = ev.target.closest("[data-tc]");
+  if(b) openTeacherOne(b.getAttribute("data-tc"));
+});
+$("tcSort").addEventListener("click", function(ev){
+  var b = ev.target.closest("[data-sort]");
+  if(!b) return;
+  tcSort = b.getAttribute("data-sort");
+  Array.prototype.forEach.call($("tcSort").children, function(c){
+    c.classList.toggle("on", c === b);
+  });
+  renderTeacher();
+});
+$("teacherRefresh").addEventListener("click", loadTeacher);
+$("teacherBack").addEventListener("click", function(){ showLogin(); });
+$("teacherOneBack").addEventListener("click", function(){ showScreen("screen-teacher"); });
 
 /* ============ 進度同步（Google Sheet） ============ */
 // ⚠️ 部署 Apps Script 之後,將條網址貼喺下面(要以 /exec 結尾)
@@ -2091,6 +2235,13 @@ function showLogin(){
 }
 
 function doLogin(){
+  // 老師專用：打 check 入全班進度面板,唔會當成學生登入
+  if(String($("loginName").value || "").trim().toLowerCase() === TEACHER_WORD){
+    $("loginError").hidden = true;
+    $("loginName").value = "";
+    openTeacher();
+    return;
+  }
   var nm = matchStudent($("loginName").value);
   if(!nm){ $("loginError").hidden = false; return; }
   $("loginError").hidden = true;
