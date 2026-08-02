@@ -1,4 +1,7 @@
 <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>旅遊與款待科・溫習神器</title>
 <style>
@@ -782,6 +785,13 @@ button:disabled{opacity:1;}
 .gate.tone-dse{background:var(--gold-soft);border-color:var(--gold);}
 .gate.tone-dse::before{background:linear-gradient(135deg,#F5D678,#D9A94F,#8C2B32);}
 .gate.tone-dse .gate-title{color:var(--gold-ink,var(--ink));}
+
+.ver-tag{position:fixed;right:.5rem;bottom:.4rem;font-size:.6rem;
+  color:var(--ink-faint);opacity:.55;pointer-events:none;z-index:50;
+  font-variant-numeric:tabular-nums;}
+.ver-new{position:fixed;left:0;right:0;bottom:0;z-index:99;
+  background:#C0396E;color:#fff;border:0;width:100%;
+  font:inherit;font-size:.85rem;font-weight:700;padding:.7rem;cursor:pointer;}
 </style>
 
 <div class="app">
@@ -1989,6 +1999,7 @@ $("p2Steps").addEventListener("click", function(ev){
     var si = parseInt(b.getAttribute("data-si"), 10);
     // 比較表：第一下只出準則，第二下才出內容
     pr.lvl[si] = (q.steps[si].type === "grid" && pr.lvl[si] === 0) ? 1 : 2;
+    markDone("p2Set", state.p2Flat[state.p2Idx].year + "-" + q.id + "-" + si);
   } else if(act === "next"){
     if(pr.shown < q.steps.length) pr.shown++;
   }
@@ -2006,6 +2017,8 @@ $("p2EssaySec").addEventListener("click", function(ev){
   if(!b) return;
   if(!p2Guard()) return;
   state.p2Prog.essay = true;
+  markDone("p2Set", state.p2Flat[state.p2Idx].year + "-" +
+                    state.p2Flat[state.p2Idx].q.id + "-essay");
   renderP2Detail();
 });
 
@@ -2030,6 +2043,58 @@ aircraftBtns.forEach(function(btn){
 
 
 
+
+
+/* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
+   只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
+var APP_VERSION = "20260802-2229";
+function checkVersion(){
+  fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
+    .then(function(r){ return r.ok ? r.text() : null; })
+    .then(function(t){
+      if(!t) return;
+      var latest = String(t).trim();
+      if(latest && latest !== APP_VERSION){
+        _vb.hidden = false;
+      }
+    })
+    .catch(function(){});
+}
+/* 檔案冇 </body>,所以唔喺 HTML 插標籤,改由 JS 建立,免得元素未存在就綁事件 */
+var _vt = document.createElement("span");
+_vt.className = "ver-tag"; _vt.textContent = "v" + APP_VERSION;
+document.body.appendChild(_vt);
+var _vb = document.createElement("button");
+_vb.className = "ver-new"; _vb.hidden = true;
+_vb.textContent = "發現新版本,撳我更新 ↻";
+document.body.appendChild(_vb);
+{
+  _vb.addEventListener("click", function(){
+    // 清走 caches 再硬重載,確保攞到新檔
+    if(window.caches && caches.keys){
+      caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); })
+        .then(function(){ location.reload(true); })
+        .catch(function(){ location.reload(true); });
+    } else {
+      location.reload(true);
+    }
+  });
+}
+setTimeout(checkVersion, 1500);
+
+/* ---- DSE 練習記錄（DBQ / 卷二）----
+   用 set 記低「邊一步做過」,而唔係加減計數器,
+   因為學生會重做同一題,純計數會愈滾愈大,反映唔到真實進度。 */
+function markDone(bucket, key){
+  if(!progress.dse) progress.dse = {};
+  if(!progress.dse[bucket]) progress.dse[bucket] = {};
+  if(progress.dse[bucket][key]) return;        // 做過就唔使再存
+  progress.dse[bucket][key] = 1;
+  // 同時更新俾老師睇嘅總數
+  progress.dse[bucket === "dbqSet" ? "dbqSteps" : "p2Subs"] =
+    Object.keys(progress.dse[bucket]).length;
+  saveProgress(progress);
+}
 
 /* ============ 老師面板（登入打 check 進入） ============ */
 var TEACHER_WORD = "check";
@@ -2172,8 +2237,41 @@ function setSyncStatus(msg){
 }
 
 var _syncTimer = null;
+var _syncPending = false;      // 有嘢未傳上去,離開頁面前要 flush
+
+/* 學生做完即刻閂 tab 嘅話,延遲嘅 fetch 會嚟唔切發出。
+   sendBeacon 係專為呢個情況而設:瀏覽器會喺背景保證送達。 */
+function flushSync(){
+  if(!syncEnabled() || !_syncPending) return;
+  var body = JSON.stringify({
+    key: SYNC_KEY, id: student.id, name: student.name,
+    cls: student.cls, progress: progress
+  });
+  var sent = false;
+  try{
+    if(navigator.sendBeacon){
+      sent = navigator.sendBeacon(SYNC_URL, new Blob([body], {type:"text/plain;charset=utf-8"}));
+    }
+  }catch(e){}
+  if(!sent){
+    // 冇 sendBeacon 就用同步 fetch(keepalive),效果類似
+    try{
+      fetch(SYNC_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+                       body:body, keepalive:true});
+    }catch(e){}
+  }
+  _syncPending = false;
+  clearTimeout(_syncTimer);
+}
+
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "hidden") flushSync();   // 切走 app / 熄 mon
+});
+window.addEventListener("pagehide", flushSync);            // 閂 tab / 返上一頁
+
 function syncUp(){
   if(!syncEnabled()) return;
+  _syncPending = true;
   clearTimeout(_syncTimer);
   // 慢半拍先傳,避免學生連續揭幾張卡就打幾次
   _syncTimer = setTimeout(function(){
@@ -2187,9 +2285,12 @@ function syncUp(){
         cls: student.cls, progress: progress
       })
     }).then(function(r){ return r.json(); })
-      .then(function(d){ setSyncStatus(d && d.ok ? "已儲存 ✓" : "儲存失敗"); })
+      .then(function(d){
+        if(d && d.ok){ _syncPending = false; setSyncStatus("已儲存 ✓"); }
+        else { setSyncStatus("儲存失敗"); }
+      })
       .catch(function(){ setSyncStatus("離線,暫存喺本機"); });
-  }, 1200);
+  }, 600);
 }
 
 function syncDown(cb){
@@ -2390,6 +2491,8 @@ $("dbqQs").addEventListener("click", function(ev){
     var a = parseInt(p[0],10), b2 = parseInt(p[1],10);
     if(!dbqState.shown[a]) dbqState.shown[a] = {};
     dbqState.shown[a][b2] = true;
+    var qq = DBQ_PAPERS[0].qs[dbqState.qi];
+    markDone("dbqSet", "2025-" + qq.subs[a].id + "-" + b2);
     renderDbqDetail();
     return;
   }
