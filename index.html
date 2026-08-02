@@ -792,6 +792,32 @@ button:disabled{opacity:1;}
 .ver-new{position:fixed;left:0;right:0;bottom:0;z-index:99;
   background:#C0396E;color:#fff;border:0;width:100%;
   font:inherit;font-size:.85rem;font-weight:700;padding:.7rem;cursor:pointer;}
+
+/* ---------- 溫習日程 ---------- */
+.sched{margin-top:.55rem;padding-top:.5rem;border-top:1px dashed var(--line);
+  display:flex;flex-direction:column;gap:.3rem;}
+.sched-top{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;
+  font-size:.74rem;color:var(--ink-soft);}
+.sched-due{font-weight:700;}
+.sched-cd{font-variant-numeric:tabular-nums;font-weight:800;font-size:.78rem;}
+.sched-cd.warn{color:#B4541F;}
+.sched-cd.over{color:#8C2B32;}
+.sched-cd.done{color:#1F6B45;}
+.sched-cd.soon{color:#8C6A2B;}
+.sched-bar{display:block;height:6px;border-radius:99px;background:var(--paper-sunken);overflow:hidden;}
+/* span 預設係 inline,width 唔會生效,一定要 block */
+.sched-fill{display:block;height:100%;min-width:2px;border-radius:99px;
+  background:var(--accent);transition:width .4s ease;}
+.sched-fill.ok{background:#2E8B57;}
+.sched-goal{font-size:.72rem;color:var(--ink-soft);display:flex;justify-content:space-between;
+  gap:.6rem;align-items:baseline;}
+.sched-txt{white-space:nowrap;}
+.sched-goal b{color:var(--ink);}
+.sched-badge{font-size:.68rem;font-weight:700;border-radius:99px;padding:.1rem .45rem;
+  white-space:nowrap;flex:0 0 auto;}
+.sched-badge.ok{color:#1F6B45;background:#DDF0E5;}
+.sched-badge.no{color:#8C2B32;background:#F6DFE0;}
+.sched-now{box-shadow:0 0 0 2px var(--accent) inset;}
 </style>
 
 <div class="app">
@@ -1131,6 +1157,7 @@ function tryUnlockGate(pw){
 }
 
 function afterGate(){
+  setTimeout(startSchedule, 300);
   // 未登記過、或者舊裝置存咗個唔喺名單上嘅名,都要重新揀
   if(!student || !matchStudent(student.id)){ showLogin(); return; }
   syncDown(function(){ renderBooks(); showScreen("screen-home"); });
@@ -2045,9 +2072,142 @@ aircraftBtns.forEach(function(btn){
 
 
 
+
+/* ============ 溫習日程（香港時間） ============
+   限期用明確嘅 +08:00 寫死,唔會受學生部機時區影響。 */
+var SCHEDULE = [
+  { act:"review", name:"概念重溫",
+    from:"2026-08-01T00:00:00+08:00", to:"2026-08-07T23:59:59+08:00",
+    goal:"每課題 ≥LV2",
+    calc:function(){
+      var done = 0, total = 0;
+      BOOKS.forEach(function(bk){
+        var bp = (progress.books && progress.books[bk.n]) || {};
+        var lv = bp.flashLevel || {}, vis = bp.flashVisited || {};
+        bk.topics.forEach(function(t){
+          total++;
+          var n = Number(lv[t.n]) || 0;
+          if(!n && vis[t.n]) n = 1;        // 舊版淨係打 ✓ 嘅當 LV1
+          if(n >= 2) done++;
+        });
+      });
+      return {done:done, total:total, unit:"個課題達 LV2"};
+    }},
+  { act:"dse", name:"卷一MC",
+    from:"2026-08-08T00:00:00+08:00", to:"2026-08-14T23:59:59+08:00",
+    goal:"每年 ≥28/30",
+    calc:function(){
+      var done = 0, total = DSE_PAPERS.length;
+      DSE_PAPERS.forEach(function(p){
+        var r = (progress.dse && progress.dse[p.year]) || {};
+        if((Number(r.attempts)||0) > 0 && (Number(r.best)||0) >= 28) done++;
+      });
+      return {done:done, total:total, unit:"年達標"};
+    }},
+  { act:"dbq", name:"卷一DBQ",
+    from:"2026-08-15T00:00:00+08:00", to:"2026-08-21T23:59:59+08:00",
+    goal:"全部做一次",
+    calc:function(){
+      var total = 0;
+      DBQ_PAPERS.forEach(function(y){
+        y.qs.forEach(function(q){ q.subs.forEach(function(sb){ total += sb.steps.length; }); });
+      });
+      var set = (progress.dse && progress.dse.dbqSet) || {};
+      return {done:Object.keys(set).length, total:total, unit:"個步驟完成"};
+    }},
+  { act:"p2", name:"卷二",
+    from:"2026-08-22T00:00:00+08:00", to:"2026-08-31T23:59:59+08:00",
+    goal:"每年做一次",
+    calc:function(){
+      var total = 0;
+      P2_PAPERS.forEach(function(p){ p.groups.forEach(function(g){ total += g.qs.length; }); });
+      // 範文只會喺全部步驟做完之後先出現,所以 -essay 就代表嗰條分題真係做完
+      var set = (progress.dse && progress.dse.p2Set) || {};
+      var done = 0;
+      Object.keys(set).forEach(function(k){ if(k.slice(-6) === "-essay") done++; });
+      return {done:done, total:total, unit:"條分題完成"};
+    }}
+];
+
+function hkDate(iso){ return new Date(iso); }
+function fmtDue(iso){
+  var d = hkDate(iso);
+  // zh-HK 預設係「日/月」,「7/8」會俾人睇錯做 7月8日,所以逐個 part 砌返「8月7日」
+  try{
+    var g = {};
+    new Intl.DateTimeFormat("en-GB", {timeZone:"Asia/Hong_Kong",
+      month:"numeric", day:"numeric", weekday:"short",
+      hour:"2-digit", minute:"2-digit", hour12:false})
+      .formatToParts(d).forEach(function(p){ g[p.type] = p.value; });
+    var wk = ["日","一","二","三","四","五","六"];
+    var w = ({Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6})[g.weekday];
+    return Number(g.month) + "月" + Number(g.day) + "日" + (w === undefined ? "" : "（" + wk[w] + "）")
+           + " " + g.hour + ":" + g.minute;
+  }catch(e){ return iso.slice(5,7) + "月" + iso.slice(8,10) + "日 " + iso.slice(11,16); }
+}
+function cdText(ms){
+  if(ms <= 0) return null;
+  var sec = Math.floor(ms/1000);
+  var d = Math.floor(sec/86400), h = Math.floor(sec%86400/3600),
+      m = Math.floor(sec%3600/60), ss = sec%60;
+  function p(n){ return (n<10?"0":"") + n; }
+  return d > 0 ? ("仲有 " + d + "日 " + p(h) + ":" + p(m) + ":" + p(ss))
+               : ("仲有 " + p(h) + ":" + p(m) + ":" + p(ss));
+}
+
+function renderSchedule(){
+  var now = Date.now();
+  SCHEDULE.forEach(function(sc){
+    var btn = document.querySelector('[data-aircraft="' + sc.act + '"]');
+    if(!btn) return;
+    var box = btn.querySelector(".sched");
+    if(!box){
+      box = document.createElement("span");
+      box.className = "sched";
+      box.innerHTML = '<span class="sched-top"><span class="sched-due"></span><span class="sched-cd"></span></span>' +
+                      '<span class="sched-bar"><span class="sched-fill"></span></span>' +
+                      '<span class="sched-goal"><span class="sched-txt"></span><span class="sched-badge"></span></span>';
+      btn.appendChild(box);
+    }
+    var r = sc.calc();
+    var ok = r.total > 0 && r.done >= r.total;
+    var pct = r.total ? Math.round(r.done / r.total * 100) : 0;
+    var end = hkDate(sc.to).getTime(), start = hkDate(sc.from).getTime();
+    var left = end - now;
+
+    box.querySelector(".sched-due").textContent = "限期 " + fmtDue(sc.to);
+    var cd = box.querySelector(".sched-cd");
+    if(ok){ cd.textContent = "已達標 ✓"; cd.className = "sched-cd done"; }
+    else if(left <= 0){ cd.textContent = "已過期"; cd.className = "sched-cd over"; }
+    else if(now < start){ cd.textContent = "未開始"; cd.className = "sched-cd soon"; }
+    else {
+      cd.textContent = cdText(left);
+      cd.className = "sched-cd" + (left < 86400000 ? " warn" : "");
+    }
+    var fill = box.querySelector(".sched-fill");
+    fill.style.width = pct + "%";
+    fill.className = "sched-fill" + (ok ? " ok" : "");
+    box.querySelector(".sched-txt").innerHTML =
+      "<b>" + r.done + " / " + r.total + "</b> " + r.unit;
+    var bd = box.querySelector(".sched-badge");
+    bd.textContent = ok ? "達標" : sc.goal;
+    bd.className = "sched-badge " + (ok ? "ok" : "");
+    btn.classList.toggle("sched-now", now >= start && left > 0);
+  });
+}
+
+var _schedTimer = null;
+function startSchedule(){
+  renderSchedule();
+  clearInterval(_schedTimer);
+  _schedTimer = setInterval(function(){
+    if(document.getElementById("screen-home").classList.contains("active")) renderSchedule();
+  }, 1000);
+}
+
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260802-2229";
+var APP_VERSION = "20260802-2329";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
@@ -2351,6 +2511,7 @@ function doLogin(){
   $("loginStatus").textContent = "登入中…";
   syncDown(function(){
     renderBooks();
+    startSchedule();
     showScreen("screen-home");
   });
 }
