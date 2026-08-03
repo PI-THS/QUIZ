@@ -841,6 +841,7 @@ button:disabled{opacity:1;}
 /* DBQ 大題卡：原本 renderDbqList 出嘅 class 名(.leg/.leg-no/.leg-main/.leg-sub)
    同 CSS 入面嘅 .leg-row/.leg-num/.leg-info 完全對唔上,所以之前係冇樣式嘅裸按鈕。 */
 .pass-rule.under-bar{margin:1rem 1.2rem 1.2rem;}
+#screen-home .pass-rule{margin:-.4rem 1.2rem .2rem;font-size:.72rem;opacity:.75;}
 .dbq-legs{display:flex;flex-direction:column;gap:.7rem;padding:0 1.2rem 1.8rem;}
 .dbq-leg{width:100%;text-align:left;cursor:pointer;font:inherit;color:inherit;
   background:var(--paper-sunken);border:1.5px solid var(--line);border-radius:.6rem;
@@ -863,6 +864,149 @@ button:disabled{opacity:1;}
 .dbq-leg-fill.ok{background:#2E8B57;}
 .dbq-leg-st{font-size:.72rem;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
 .dbq-leg-st.ok{color:#1F6B45;font-weight:700;}
+
+/* ═══════════ 主頁：TCG 咭牌風 ═══════════ */
+#screen-home{
+  background:
+    radial-gradient(120% 55% at 50% -8%, #FFFFFF 0%, #E8F2FD 42%, transparent 72%),
+    linear-gradient(180deg,#EAF3FC 0%,#F7FBFF 45%,var(--paper) 100%);
+}
+.tcg-hero{position:relative;padding:2.2rem 0 1.2rem;text-align:center;overflow:hidden;}
+/* 開包放射光線,轉一圈 70 秒——慢到唔會分散注意力 */
+.tcg-rays{
+  position:absolute;left:50%;top:1rem;width:22rem;height:22rem;
+  transform:translateX(-50%);pointer-events:none;opacity:.5;
+  background:repeating-conic-gradient(from 0deg at 50% 50%,
+    rgba(255,255,255,0) 0deg 7deg, rgba(120,180,240,.30) 7deg 9deg);
+  -webkit-mask-image:radial-gradient(circle,#000 12%,transparent 62%);
+  mask-image:radial-gradient(circle,#000 12%,transparent 62%);
+  animation:tcgSpin 70s linear infinite;
+}
+@keyframes tcgSpin{to{transform:translateX(-50%) rotate(360deg);}}
+.tcg-halo{
+  position:absolute;left:50%;top:3rem;width:13rem;height:13rem;
+  transform:translateX(-50%);pointer-events:none;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.95) 0%,rgba(214,235,255,.55) 45%,transparent 70%);
+}
+.tcg-spark{
+  position:absolute;border-radius:50%;background:#fff;pointer-events:none;
+  box-shadow:0 0 6px 2px rgba(160,205,255,.9);animation:tcgTwinkle 3.4s ease-in-out infinite;
+}
+@keyframes tcgTwinkle{0%,100%{opacity:0;transform:scale(.4);}50%{opacity:1;transform:scale(1);}}
+.tcg-hero-in{position:relative;}
+.tcg-crest{
+  width:3.6rem;height:3.6rem;margin:0 auto .7rem;border-radius:1.1rem;
+  background:linear-gradient(145deg,#7FC8FF,#4A8FE0 45%,#7B6BE8);
+  display:grid;place-items:center;color:#fff;font-weight:900;font-size:1.05rem;
+  letter-spacing:.04em;position:relative;overflow:hidden;
+  box-shadow:0 0 0 4px #fff,0 8px 20px rgba(74,143,224,.38),inset 0 -3px 8px rgba(0,0,0,.12);
+}
+.tcg-crest::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.75) 50%,transparent 62%);
+  transform:translateX(-120%);animation:tcgSweep 4.5s ease-in-out infinite;
+}
+@keyframes tcgSweep{0%,62%{transform:translateX(-120%);}88%,100%{transform:translateX(120%);}}
+.tcg-h1{
+  font-size:1.85rem;font-weight:900;letter-spacing:.02em;line-height:1.25;
+  background:linear-gradient(180deg,#2B3A63 0%,#1B2340 60%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 0 rgba(255,255,255,.9));
+}
+.tcg-sub{
+  font-family:'TicketMono',"SF Mono",Menlo,Consolas,monospace;
+  font-size:.66rem;letter-spacing:.3em;color:var(--ink-faint);
+  margin-top:.4rem;text-indent:.3em;
+}
+.tcg-chapter{
+  display:flex;align-items:center;gap:.55rem;margin:1.3rem 1.2rem .7rem;
+  font-size:.72rem;font-weight:800;letter-spacing:.16em;color:var(--ink-soft);
+}
+.tcg-chapter::before,.tcg-chapter::after{
+  content:"";flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--line),transparent);
+}
+.tcg-deck{display:flex;flex-direction:column;gap:.85rem;padding:0 1.2rem;}
+
+.tcg-card{
+  position:relative;display:block;width:100%;text-align:left;
+  font:inherit;color:inherit;cursor:pointer;
+  background:var(--paper-raised);
+  border:3px solid #fff;border-radius:1rem;padding:.9rem 1rem;overflow:hidden;
+  box-shadow:0 1px 2px rgba(27,35,64,.06),0 8px 22px -8px rgba(60,110,180,.30);
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s ease;
+}
+.tcg-card:active{transform:scale(.975);
+  box-shadow:0 1px 2px rgba(27,35,64,.06),0 4px 12px -6px rgba(60,110,180,.3);}
+.tcg-card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--tone);}
+/* 閃咭光澤 */
+.tcg-card::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(112deg,transparent 30%,rgba(255,255,255,.55) 44%,
+    rgba(190,225,255,.42) 50%,rgba(255,255,255,.55) 56%,transparent 70%);
+  transform:translateX(-140%);
+}
+.tcg-card.holo::after{animation:tcgHolo 6s ease-in-out infinite;}
+@keyframes tcgHolo{0%,70%{transform:translateX(-140%);}92%,100%{transform:translateX(140%);}}
+
+.tcg-top{display:flex;align-items:center;gap:.7rem;}
+.tcg-icon{
+  width:2.5rem;height:2.5rem;border-radius:.7rem;flex:0 0 auto;
+  display:grid;place-items:center;font-size:1.25rem;
+  background:var(--tone-soft);box-shadow:inset 0 -2px 6px rgba(0,0,0,.06);
+}
+.tcg-mid{flex:1;min-width:0;}
+.tcg-tag{
+  display:block;font-family:'TicketMono',"SF Mono",Menlo,Consolas,monospace;
+  font-size:.6rem;letter-spacing:.14em;color:var(--tone);font-weight:700;
+}
+.tcg-name{display:block;font-size:1.08rem;font-weight:900;letter-spacing:.01em;}
+.tcg-rarity{display:flex;gap:.12rem;flex:0 0 auto;}
+.tcg-dia{width:.5rem;height:.5rem;background:var(--line);
+  clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);}
+.tcg-dia.on{background:var(--tone);}
+
+.tcg-body{display:block;margin-top:.7rem;}
+.tcg-line{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;
+  font-size:.74rem;color:var(--ink-soft);}
+.tcg-line b{color:var(--ink);font-weight:800;}
+.tcg-due{white-space:nowrap;}
+/* 倒數預設用中性色：如果跟卡片色,概念卡個倒數會係綠色,睇落似「已達標」 */
+.tcg-timer{font-family:'TicketMono',"SF Mono",Menlo,Consolas,monospace;
+  font-weight:700;font-size:.74rem;color:var(--ink);white-space:nowrap;}
+.tcg-timer.warn{color:#EF5F6B;}
+.tcg-timer.done{color:#2FB47C;}
+.tcg-timer.soon{color:var(--ink-faint);}
+/* span 預設 inline,唔加 display:block 條進度條會冇高度 */
+.tcg-bar{display:block;height:6px;border-radius:99px;background:#EDF2F8;
+  margin-top:.45rem;overflow:hidden;}
+.tcg-fill{display:block;height:100%;border-radius:99px;background:var(--tone);
+  transition:width .5s ease;position:relative;min-width:2px;}
+.tcg-fill::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+  animation:tcgShine 2.4s linear infinite;
+}
+@keyframes tcgShine{to{transform:translateX(200%);}}
+
+.tcg-card.done{border-color:#FFF3D0;}
+.tcg-ribbon{
+  position:absolute;top:.75rem;right:.85rem;z-index:2;
+  background:linear-gradient(180deg,#FFD97A,#E8A63C);color:#4A3208;
+  font-size:.6rem;font-weight:900;letter-spacing:.12em;white-space:nowrap;
+  padding:.16rem .55rem;border-radius:99px;
+  box-shadow:0 2px 6px rgba(184,133,32,.35),inset 0 -1px 2px rgba(0,0,0,.12);
+}
+.tcg-card.done .tcg-rarity{margin-right:2.8rem;}
+.tcg-card.lock{background:#FAFBFD;box-shadow:0 1px 2px rgba(27,35,64,.05);}
+.tcg-card.lock .tcg-icon{filter:grayscale(1);opacity:.55;}
+.tcg-card.lock .tcg-name{color:var(--ink-faint);}
+
+/* 有啲人睇動畫會暈,尊重系統設定 */
+@media (prefers-reduced-motion: reduce){
+  .tcg-rays,.tcg-crest::after,.tcg-card.holo::after,.tcg-fill::after,.tcg-spark{animation:none;}
+  .tcg-card{transition:none;}
+}
 </style>
 
 <div class="app">
@@ -904,27 +1048,63 @@ button:disabled{opacity:1;}
     </section>
 
   <section id="screen-home" class="screen">
-    <div class="hero hero-lean">
-      <h1><span class="accent-word">YHP的溫習神器</span></h1>
+    <div class="tcg-hero">
+      <div class="tcg-rays" aria-hidden="true"></div>
+      <div class="tcg-halo" aria-hidden="true"></div>
+      <span class="tcg-spark" style="left:22%;top:3.2rem;width:5px;height:5px;animation-delay:.2s"></span>
+      <span class="tcg-spark" style="left:78%;top:4.6rem;width:4px;height:4px;animation-delay:1.1s"></span>
+      <span class="tcg-spark" style="left:66%;top:2.2rem;width:6px;height:6px;animation-delay:2s"></span>
+      <span class="tcg-spark" style="left:15%;top:6.4rem;width:4px;height:4px;animation-delay:2.7s"></span>
+      <div class="tcg-hero-in">
+        <div class="tcg-crest" id="homeCrest">YHP</div>
+        <h1 class="tcg-h1">YHP的溫習神器</h1>
+        <div class="tcg-sub">TOURISM &amp; HOSPITALITY</div>
+      </div>
     </div>
 
-    <p class="pass-rule" id="syncStatus"></p>
-    <div class="home-group">溫書部分</div>
-    <div class="gates aircraft-gates" id="aircraftList">
-      <button class="gate special lean" data-aircraft="review">
-        <span class="gate-title">概念重溫</span>
+    <p class="pass-rule under-bar" id="syncStatus"></p>
+
+    <div class="tcg-chapter">溫書部分</div>
+    <div class="tcg-deck" id="aircraftList">
+      <button class="tcg-card" data-aircraft="review"
+              style="--tone:#2FB47C;--tone-soft:#E4F7EE">
+        <span class="tcg-top">
+          <span class="tcg-icon">📘</span>
+          <span class="tcg-mid"><span class="tcg-tag">CONCEPT</span>
+            <span class="tcg-name">概念重溫</span></span>
+          <span class="tcg-rarity"></span>
+        </span>
       </button>
     </div>
-    <div class="home-group">DSE實戰</div>
-    <div class="gates aircraft-gates" id="aircraftList2">
-      <button class="gate special lean tone-dse" data-aircraft="dse">
-        <span class="gate-title">卷一MC</span>
+
+    <div class="tcg-chapter">DSE 實戰</div>
+    <div class="tcg-deck" id="aircraftList2">
+      <button class="tcg-card" data-aircraft="dse"
+              style="--tone:#EF5F6B;--tone-soft:#FDEAEC">
+        <span class="tcg-top">
+          <span class="tcg-icon">🎯</span>
+          <span class="tcg-mid"><span class="tcg-tag">PAPER 1 · MC</span>
+            <span class="tcg-name">卷一 MC</span></span>
+          <span class="tcg-rarity"></span>
+        </span>
       </button>
-      <button class="gate special lean tone-dse" data-aircraft="dbq">
-        <span class="gate-title">卷一DBQ</span>
+      <button class="tcg-card" data-aircraft="dbq"
+              style="--tone:#3C8FD6;--tone-soft:#E6F1FB">
+        <span class="tcg-top">
+          <span class="tcg-icon">🔍</span>
+          <span class="tcg-mid"><span class="tcg-tag">PAPER 1 · DBQ</span>
+            <span class="tcg-name">卷一 DBQ</span></span>
+          <span class="tcg-rarity"></span>
+        </span>
       </button>
-      <button class="gate special lean tone-dse" data-aircraft="p2">
-        <span class="gate-title">卷二</span>
+      <button class="tcg-card" data-aircraft="p2"
+              style="--tone:#D9932A;--tone-soft:#FBF0DC">
+        <span class="tcg-top">
+          <span class="tcg-icon">✍️</span>
+          <span class="tcg-mid"><span class="tcg-tag">PAPER 2</span>
+            <span class="tcg-name">卷二</span></span>
+          <span class="tcg-rarity"></span>
+        </span>
       </button>
     </div>
   </section>
@@ -1178,6 +1358,7 @@ function sha256Hex(text){
 }
 
 function afterGate(){
+  if(student && $("homeCrest")) $("homeCrest").textContent = student.name || "THS";
   setTimeout(startSchedule, 300);
   // 未登記過、或者舊裝置存咗個唔喺名單上嘅名,都要重新揀
   if(!student || !matchStudent(student.id)){ showLogin(); return; }
@@ -2065,7 +2246,7 @@ $("p2EssaySec").addEventListener("click", function(ev){
   renderP2Detail();
 });
 
-var aircraftBtns = document.querySelectorAll("#aircraftList .gate, #aircraftList2 .gate");
+var aircraftBtns = document.querySelectorAll("[data-aircraft]");
 aircraftBtns.forEach(function(btn){
   btn.addEventListener("click", function(){
     var kind = btn.getAttribute("data-aircraft");
@@ -2176,39 +2357,57 @@ function renderSchedule(){
   SCHEDULE.forEach(function(sc){
     var btn = document.querySelector('[data-aircraft="' + sc.act + '"]');
     if(!btn) return;
-    var box = btn.querySelector(".sched");
+    var box = btn.querySelector(".tcg-body");
     if(!box){
       box = document.createElement("span");
-      box.className = "sched";
-      box.innerHTML = '<span class="sched-top"><span class="sched-due"></span><span class="sched-cd"></span></span>' +
-                      '<span class="sched-bar"><span class="sched-fill"></span></span>' +
-                      '<span class="sched-goal"><span class="sched-txt"></span><span class="sched-badge"></span></span>';
+      box.className = "tcg-body";
+      box.innerHTML =
+        '<span class="tcg-line"><span class="tcg-due"></span><span class="tcg-timer"></span></span>' +
+        '<span class="tcg-bar"><span class="tcg-fill"></span></span>' +
+        '<span class="tcg-line" style="margin-top:.35rem">' +
+          '<span class="tcg-txt"></span><span class="tcg-goal"></span></span>';
       btn.appendChild(box);
     }
     var r = sc.calc();
     var ok = r.total > 0 && r.done >= r.total;
     var pct = r.total ? Math.round(r.done / r.total * 100) : 0;
-    var end = hkDate(sc.to).getTime(), start = hkDate(sc.from).getTime();
-    var left = end - now;
+    var start = hkDate(sc.from).getTime(), end = hkDate(sc.to).getTime();
+    var left = end - now, notYet = now < start;
 
-    box.querySelector(".sched-due").textContent = "限期 " + fmtDue(sc.to);
-    var cd = box.querySelector(".sched-cd");
-    if(ok){ cd.textContent = "已達標 ✓"; cd.className = "sched-cd done"; }
-    else if(left <= 0){ cd.textContent = "已過期"; cd.className = "sched-cd over"; }
-    else if(now < start){ cd.textContent = "未開始"; cd.className = "sched-cd soon"; }
-    else {
-      cd.textContent = cdText(left);
-      cd.className = "sched-cd" + (left < 86400000 ? " warn" : "");
+    // 咭牌位置窄,唔夠位放星期,摺行反而難睇
+    box.querySelector(".tcg-due").textContent = "限期 " + fmtDue(sc.to).replace(/（.）/, "");
+    var cd = box.querySelector(".tcg-timer");
+    if(ok){ cd.textContent = "已達標 ✓"; cd.className = "tcg-timer done"; }
+    else if(left <= 0){ cd.textContent = "已過期"; cd.className = "tcg-timer warn"; }
+    else if(notYet){ cd.textContent = fmtDue(sc.from).split("）")[0].split("（")[0] + " 開始";
+                     cd.className = "tcg-timer soon"; }
+    else { cd.textContent = cdText(left);
+           cd.className = "tcg-timer" + (left < 86400000 ? " warn" : ""); }
+
+    box.querySelector(".tcg-fill").style.width = pct + "%";
+    box.querySelector(".tcg-txt").innerHTML = "<b>" + r.done + "</b> / " + r.total + " " + r.unit;
+    box.querySelector(".tcg-goal").textContent = sc.goal;
+
+    // 稀有度鑽石：每 25% 一粒
+    var rar = btn.querySelector(".tcg-rarity"), lit = Math.ceil(pct / 25);
+    if(rar.children.length !== 4){
+      rar.innerHTML = "";
+      for(var i = 0; i < 4; i++) rar.appendChild(document.createElement("i"));
     }
-    var fill = box.querySelector(".sched-fill");
-    fill.style.width = pct + "%";
-    fill.className = "sched-fill" + (ok ? " ok" : "");
-    box.querySelector(".sched-txt").innerHTML =
-      "<b>" + r.done + " / " + r.total + "</b> " + r.unit;
-    var bd = box.querySelector(".sched-badge");
-    bd.textContent = ok ? "達標" : sc.goal;
-    bd.className = "sched-badge " + (ok ? "ok" : "");
-    btn.classList.toggle("sched-now", now >= start && left > 0);
+    for(var k = 0; k < 4; k++)
+      rar.children[k].className = "tcg-dia" + (k < lit ? " on" : "");
+
+    btn.classList.toggle("done", ok);
+    // 提早做完就唔應該再變灰——否則會同時出現「達標」同鎖住嘅樣
+    btn.classList.toggle("lock", notYet && !ok);
+    // 未開始／已達標就唔好再閃,閃嚟做乜
+    btn.classList.toggle("holo", !notYet && !ok);
+    var rib = btn.querySelector(".tcg-ribbon");
+    if(ok && !rib){
+      rib = document.createElement("span");
+      rib.className = "tcg-ribbon"; rib.textContent = "達標";
+      btn.appendChild(rib);
+    } else if(!ok && rib){ rib.remove(); }
   });
 }
 
@@ -2223,7 +2422,7 @@ function startSchedule(){
 
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260803-1055";
+var APP_VERSION = "20260803-1201";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
@@ -2527,6 +2726,7 @@ function doLogin(){
   $("loginStatus").textContent = "登入中…";
   syncDown(function(){
     renderBooks();
+    if(student && $("homeCrest")) $("homeCrest").textContent = student.name || "THS";
     startSchedule();
     showScreen("screen-home");
   });
