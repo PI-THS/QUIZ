@@ -96,7 +96,8 @@ body{
 
 .mono{font-family:'TicketMono',"SF Mono",Menlo,Consolas,monospace;}
 
-.screen{display:none;flex-direction:column;flex:1;}
+.screen{display:none;flex-direction:column;flex:1;
+  background:var(--sec-soft, transparent);}
 .screen.active{display:flex;}
 @media (prefers-reduced-motion:no-preference){
   .screen.active{animation:fadeIn .35s ease;}
@@ -240,9 +241,12 @@ button:disabled{opacity:1;}
   position:relative;
 }
 .bar::after{
-  content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
-  background:var(--board-grad);
+  content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  /* 冇設 --sec 嗰陣（主頁）用返彩虹漸變,入到某個部分就轉做嗰個部分嘅主色 */
+  background:var(--sec, var(--board-grad));
 }
+/* 頂欄加返少少該部分嘅色,唔會太搶但認得出 */
+.bar{box-shadow:inset 0 -1.6rem 1.6rem -1.6rem var(--sec, transparent);}
 .back-btn{
   background:none;border:none;cursor:pointer;
   font-size:1.3rem;color:var(--board-ink);
@@ -737,7 +741,7 @@ button:disabled{opacity:1;}
 .dbq-jump{display:inline-flex;align-items:center;gap:.3rem;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;color:#C0396E;background:none;border:0;padding:.12rem 0;margin-top:.45rem;text-decoration:underline;}
 .dbq-golink{display:block;width:100%;text-align:left;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;color:#fff;background:#3D6B8C;border:0;border-radius:7px;padding:.45rem .7rem;margin-top:.5rem;}
 .dbq-golink:hover{background:#2A6182;}
-.dbq-return[hidden]{display:none;}   /* hidden 屬性要贏過下面 display:block,否則正常入神功都會見到條橫幅 */
+.dbq-return[hidden]{display:none;}   /* hidden 屬性要贏過下面 display:block,否則正常入概念重溫都會見到條橫幅 */
 .dbq-return{display:block;width:100%;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;color:#fff;background:#C0396E;border:0;padding:.55rem .8rem;text-align:center;}
 @media (max-width:30rem){.dbq-panel,.dbq-reveal,.dbq-note{margin-left:0;}}
 
@@ -1398,22 +1402,22 @@ text.tm-name{fill-opacity:1;stroke:#fff;stroke-width:calc(5px * var(--tmf,1));
   <section id="screen-books" class="screen">
     <div class="bar">
       <button class="back-btn" id="booksBack" aria-label="返回">←</button>
-      <div class="bar-title">概念神功</div>
+      <div class="bar-title">概念重溫</div>
     </div>
     <div class="passport-card">
       <div>
-        <div class="field-label">武者編號</div>
+        <div class="field-label">學生編號</div>
         <div class="field-value">THS-0001</div>
       </div>
       <div class="ticket-divider"></div>
       <div class="stamps-count">
-        <div class="field-label">已修練</div>
+        <div class="field-label">已溫習</div>
         <div class="field-value" id="homeStampCount">0 / 69</div>
       </div>
     </div>
-    <p class="pass-rule">每溫完一個小單元升1級(由LV.0開始,上限LV.99),等級代表你練咗嗰式幾多次。</p>
+    <p class="pass-rule">每溫完一個小單元升1級(由LV.0開始,上限LV.99),等級代表你溫咗呢個課題幾多次。</p>
 
-    <div class="section-label">秘笈目錄</div>
+    <div class="section-label">課本目錄</div>
     <div class="gates" id="gatesList"></div>
   </section>
 
@@ -1510,7 +1514,7 @@ text.tm-name{fill-opacity:1;stroke:#fff;stroke-width:calc(5px * var(--tmf,1));
       <div class="lv-topic" id="lvTopic"></div>
       <div class="lv-badge" id="lvBadge">LV.1</div>
       <p class="lv-hint" id="lvHint"></p>
-      <button class="fc-nav-btn primary lv-btn" id="lvBackBtn">返回秘笈目錄</button>
+      <button class="fc-nav-btn primary lv-btn" id="lvBackBtn">返回課本目錄</button>
     </div>
   </section>
 
@@ -1539,7 +1543,7 @@ text.tm-name{fill-opacity:1;stroke:#fff;stroke-width:calc(5px * var(--tmf,1));
   <section id="screen-p2-years" class="screen">
     <div class="bar">
       <button class="back-btn" id="p2YearsBack" aria-label="返回">←</button>
-      <div class="bar-title">卷二拆題心法</div>
+      <div class="bar-title">卷二</div>
     </div>
     <p class="pass-rule">每條分題先睇題幹,自己想一次,再逐步展開拆解步驟,最後對範文。</p>
     <div class="section-label">Select Year</div>
@@ -1581,7 +1585,7 @@ text.tm-name{fill-opacity:1;stroke:#fff;stroke-width:calc(5px * var(--tmf,1));
   <div class="dbq-body">
     <div class="dbq-key">
       <span><i class="dbq-chip e"></i>粉紅＝資料線索</span>
-      <span><i class="dbq-chip c"></i>藍色＝課本概念(可撳入神功)</span>
+      <span><i class="dbq-chip c"></i>藍色＝課本概念(可撳入概念重溫)</span>
     </div>
     <div class="dbq-srchead">資　料<span>先自己搵,揭答案時會標示</span></div>
     <div class="dbq-source" id="dbqSource"></div>
@@ -1735,10 +1739,50 @@ function shuffle(arr){
 }
 
 function $(id){return document.getElementById(id);}
+/* 六個部分各有主色。第二個值係好淡嘅底色——內容卡係白色,
+   淡底可以令卡浮返出嚟,同時一眼睇到自己溫緊邊個部分。 */
+/* 底色深淺實測校準過：對白色內容卡嘅對比約 1.2–1.3（睇得出係咪同一個部分,
+   但唔會搶內容）；次要文字喺呢啲底色上仍有 5.0+ 對比,過到 WCAG AA。
+   太淡（試過 1.06–1.11）學生根本察覺唔到,等於冇做。 */
+var SEC_TONE = {
+  teach:  ["#7B6BE8", "#E6E1FA"],   // 概念教學
+  review: ["#2FB47C", "#D8F1E5"],   // 概念重溫
+  unit:   ["#D2496E", "#F8DBE4"],   // 單元式DSE試題
+  dse:    ["#EF5F6B", "#FADDE0"],   // 卷一 MC
+  dbq:    ["#3C8FD6", "#D8E8F5"],   // 卷一 DBQ
+  p2:     ["#D9932A", "#F7E8CA"]    // 卷二
+};
+
+/* 揀色。答題／成績／答題詳情三個畫面幾個部分共用,所以要睇返 state.mode。 */
+function screenSection(id){
+  if(id === "screen-quiz" || id === "screen-result" || id === "screen-dse-review"){
+    if(state.mode === "dse")  return "dse";
+    if(state.mode === "unit") return "unit";
+    return "review";
+  }
+  if(id.indexOf("screen-teach") === 0) return "teach";
+  if(id.indexOf("screen-unit")  === 0) return "unit";
+  if(id.indexOf("screen-dbq")   === 0) return "dbq";
+  if(id.indexOf("screen-p2")    === 0) return "p2";
+  if(id.indexOf("screen-dse")   === 0) return "dse";
+  if(id === "screen-books" || id === "screen-topics" ||
+     id === "screen-flashcard" || id === "screen-levelup") return "review";
+  return null;                      // 主頁／登入／老師面板：保持中性
+}
+
 function showScreen(id){
   var all = document.querySelectorAll(".screen");
   for(var i=0;i<all.length;i++){ all[i].classList.remove("active"); }
   $(id).classList.add("active");
+
+  var app = document.querySelector(".app"), sec = screenSection(id);
+  if(sec){
+    app.style.setProperty("--sec", SEC_TONE[sec][0]);
+    app.style.setProperty("--sec-soft", SEC_TONE[sec][1]);
+  } else {
+    app.style.removeProperty("--sec");
+    app.style.removeProperty("--sec-soft");
+  }
 }
 
 function roundTarget(t){
@@ -1761,7 +1805,7 @@ function renderBooks(){
     totalStamped += stamped;
     var numStr = "0"+book.n;
     html += '<button class="gate" data-book-idx="'+bi+'">'+
-              '<span class="gate-code">秘笈 '+numStr+'</span>'+
+              '<span class="gate-code">BOOK '+numStr+'</span>'+
               '<span class="gate-title">第'+CN_NUM[book.n]+'冊・'+book.title+'</span>'+
             '</button>';
   });
@@ -1994,7 +2038,7 @@ function renderFlashcardTopicList(book, bp){
 }
 
 function startFlashcards(bookIndex, topicIndex){
-  // 由 DBQ 概念連結入嚟先顯示返回橫幅；正常入神功唔應該見到
+  // 由 DBQ 概念連結入嚟先顯示返回橫幅；正常入概念重溫唔應該見到
   if(!dbqState.ret){ var _rb = $("dbqReturnBar"); if(_rb) _rb.hidden = true; }
   state.mode = "flashcard";
   state.bookIndex = bookIndex;
@@ -2090,8 +2134,8 @@ function showLevelUp(topic, oldLv, newLv){
   $("lvTopic").textContent = "「" + topic.title + "」";
   $("lvBadge").textContent = "LV." + newLv;
   $("lvHint").textContent = capped
-    ? "呢一式你已經練到 LV.99 極限,係傳說級高手!"
-    : "你已經溫咗呢個小單元 " + newLv + " 次,繼續修練可以升到 LV.99!";
+    ? "呢個小單元已經溫到 LV.99 上限,非常紮實!"
+    : "你已經溫咗呢個小單元 " + newLv + " 次,繼續溫可以升到 LV.99!";
   showScreen("screen-levelup");
 }
 
@@ -2273,13 +2317,13 @@ function finishQuiz(){
     gold:"大功告成!",
     good:"順利通關",
     accent:"仍需準備",
-    bad:"修練不足"
+    bad:"仲要多溫"
   };
   var subs = {
     gold:"表現優異,呢個重點已經蓋咗章。",
     good:"表現不錯,但未夠9題答對,呢個重點仲未蓋到章,再嚟一次啦。",
-    accent:"未夠火候,建議返去溫習下呢個重點內容。",
-    bad:"修練不足,返去睇下教材先再嚟挑戰啦。"
+    accent:"仲差少少,建議返去溫習下呢個重點內容。",
+    bad:"未夠熟,返去睇下教材先再嚟挑戰啦。"
   };
 
   var stampEl = $("resultStamp");
@@ -3248,7 +3292,7 @@ function startSchedule(){
 
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260804-2228";
+var APP_VERSION = "20260804-2315";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
