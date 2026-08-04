@@ -1151,6 +1151,20 @@ button:disabled{opacity:1;}
 .tm-trop-t{font-size:calc(24px * var(--tmf,1));fill:#A57621;text-anchor:end;font-weight:700;
   stroke:#fff;stroke-width:calc(5px * var(--tmf,1));paint-order:stroke fill;}
 /* ── 單元式試題 ── */
+/* ── 必背／常考標記 ── */
+.must-tag{display:inline-block;font-size:.58rem;font-weight:800;padding:.06rem .3rem;
+  border-radius:.25rem;margin-left:.32rem;vertical-align:.1em;letter-spacing:.03em;
+  white-space:nowrap;}
+.must-tag.must{background:#FBE1E6;color:#B0284A;}
+.must-tag.often{background:#FBF0DC;color:#96650F;}
+.must-bn{display:flex;align-items:center;gap:.45rem;width:100%;margin:.55rem 0 .1rem;
+  padding:.45rem .6rem;border:1px solid;border-radius:.5rem;cursor:pointer;
+  font:inherit;text-align:left;}
+.must-bn.must{background:#FBE1E6;border-color:#F0BECA;color:#B0284A;}
+.must-bn.often{background:#FBF0DC;border-color:#EAD6AE;color:#96650F;}
+.must-bn b{font-size:.76rem;font-weight:800;letter-spacing:.04em;}
+.must-bn span{flex:1;font-size:.68rem;opacity:.85;font-variant-numeric:tabular-nums;}
+.must-bn em{font-size:.66rem;font-style:normal;font-weight:800;white-space:nowrap;}
 .un-hd{display:flex;align-items:baseline;gap:.45rem;margin:1rem .15rem .45rem;}
 .un-hd b{font-size:.84rem;letter-spacing:.03em;}
 .un-hd span{font-size:.68rem;color:var(--ink-soft);}
@@ -1953,7 +1967,7 @@ function renderFlashcardTopicList(book, bp){
     var numStr = (t.n<10?"0":"")+t.n;
     html += '<button class="leg-row" data-idx="'+i+'">'+
               '<span class="leg-num mono">'+numStr+'</span>'+
-              '<div class="leg-info"><div class="leg-title">'+t.title+'</div>'+
+              '<div class="leg-info"><div class="leg-title">'+t.title+mustTag(state.bookIndex, i)+'</div>'+
               '<div class="leg-tag">'+t.tag+'</div></div>'+
               '<span class="leg-stamp '+stampClass+'">'+stampHtml+'</span>'+
             '</button>';
@@ -2593,6 +2607,32 @@ function teachDoneSet(){
 var unitState = {bi:0, ti:0, via:false};   // via = 而家係由單元式入去咗其他引擎
 
 function unitList(bi, ti){ return UNIT_IDX[bi + "-" + ti] || []; }
+
+/* 「必背／常考」分級。73/75 個課題都考過,所以純粹「考過就標」冇分辨作用,
+   要按次數分級先幫到學生排優次。門檻同 UNIT_IDX 嘅條數掛鈎。 */
+function unitTier(bi, ti){
+  var n = unitList(bi, ti).length;
+  if(n >= 8) return {lv:"must",  txt:"必背", n:n};
+  if(n >= 3) return {lv:"often", txt:"常考", n:n};
+  return null;
+}
+/* 課文頂部用長版:除咗標籤仲講埋考過幾多次,同埋可以一撳跳去單元式試題 */
+function mustBanner(bi, ti){
+  var t = unitTier(bi, ti);
+  if(!t) return '';
+  var n = unitCount(bi, ti), bits = [];
+  if(n.mc)  bits.push("MC " + n.mc);
+  if(n.dbq) bits.push("DBQ " + n.dbq);
+  if(n.p2)  bits.push("卷二 " + n.p2);
+  return '<button class="must-bn ' + t.lv + '" data-must-go="' + bi + '-' + ti + '">' +
+           '<b>' + t.txt + '</b><span>相關歷屆試題 ' + t.n + ' 條<br>' + bits.join(" / ") + '</span>' +
+           '<em>去操返 →</em></button>';
+}
+function mustTag(bi, ti){
+  var t = unitTier(bi, ti);
+  return t ? '<span class="must-tag ' + t.lv + '" title="相關歷屆試題 ' + t.n + ' 條">' +
+             t.txt + '</span>' : '';
+}
 function unitCount(bi, ti){
   var n = {mc:0, dbq:0, p2:0};
   unitList(bi, ti).forEach(function(e){ n[e.k]++; });
@@ -2780,7 +2820,7 @@ function renderTeachTopics(bi){
     h += '<button class="tch-row' + (has ? "" : " soon") + '"' +
            (has ? ' data-teach-topic="' + ti + '"' : ' disabled') + '>' +
            '<span class="tch-n">' + (ti + 1) + '</span>' +
-           '<span class="tch-t">' + escapeHtml(t.title) + '</span>' +
+           '<span class="tch-t">' + escapeHtml(t.title) + mustTag(bi, ti) + '</span>' +
            '<span class="tch-badge' + (has ? (isRead ? " read" : "") : " soon") + '">' +
              (has ? (isRead ? "已學 ✓" : "可學") : "稍後") + '</span>' +
          '</button>';
@@ -2912,13 +2952,14 @@ function renderTeachRead(bi, ti){
   $("teachReadTitle").textContent = TBOOKS[bi].topics[ti].title;
 
   var h = '<div class="tch-hero"><span class="tag">' + escapeHtml(d.tag) + '</span>' +
+          mustBanner(bi, ti) +
           '<h2>' + escapeHtml(d.title) + '</h2>' +
           '<div class="tch-hook">' + d.hook + '</div>' +
           '<div class="tch-src">課文參考：' + escapeHtml(d.src) + '</div></div>';
 
   if(d.exams && d.exams.length){
-    h += '<div class="tch-exam"><div class="tch-exam-h">歷屆點考呢個課題' +
-         '<span>' + d.exams.length + ' 次</span></div><div class="tch-exam-b">';
+    h += '<div class="tch-exam"><div class="tch-exam-h">歷屆點考呢個課題（精選）' +
+         '<span>' + d.exams.length + ' 條</span></div><div class="tch-exam-b">';
     d.exams.forEach(function(e){
       h += '<div class="tch-ex"><span class="tch-ex-y">' + e.y + '</span>' +
            '<span class="tch-ex-p">' + escapeHtml(e.p) + ' ' + escapeHtml(e.q) + ' · ' + e.m + '</span>' +
@@ -2991,6 +3032,15 @@ $("teachRead").addEventListener("click", function(ev){
     if(k){ teachDoneSet()[k] = 1; saveProgress(progress); }
     var p = (k || "0-0").split("-");
     startFlashcards(parseInt(p[0], 10), parseInt(p[1], 10));
+    return;
+  }
+  var mg = ev.target.closest("[data-must-go]");
+  if(mg){
+    var mp = mg.getAttribute("data-must-go").split("-");
+    unitState.bi = parseInt(mp[0], 10); unitState.ti = parseInt(mp[1], 10);
+    renderUnitQs(unitState.bi, unitState.ti);
+    showScreen("screen-unit-qs");
+    window.scrollTo(0, 0);
     return;
   }
   if(ev.target.closest("#teachGoBack")){
@@ -3180,7 +3230,7 @@ function startSchedule(){
 
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260804-1000";
+var APP_VERSION = "20260804-1904";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
