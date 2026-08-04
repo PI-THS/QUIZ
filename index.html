@@ -98,6 +98,18 @@ body{
 
 .screen{display:none;flex-direction:column;flex:1;
   background:var(--sec-soft, transparent);}
+
+/* 內容區白底,染色只喺四周留一圈做外框——長篇文字唔應該直接坐喺染色上。
+   跟返 DBQ 資料卡嗰種做法。
+   ⚠ 卡片式清單(課題清單／年份清單／書架／單元試題)本身已經係白卡浮喺染色上,
+     係同一個視覺語言,所以唔喺呢度加,否則卡會白撞白冇晒層次。 */
+.tch-read, .itinerary, .flashcard-body, .p2-body, .dbq-body,
+.review-list, .levelup-body{
+  background:var(--paper-raised);
+  border-radius:14px;
+  margin:.5rem .55rem 1.1rem;
+}
+.levelup-body{width:auto;}   /* 原本 width:100%,加咗 margin 會爆出界 */
 .screen.active{display:flex;}
 @media (prefers-reduced-motion:no-preference){
   .screen.active{animation:fadeIn .35s ease;}
@@ -3292,7 +3304,7 @@ function startSchedule(){
 
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260804-2315";
+var APP_VERSION = "20260804-2341";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
