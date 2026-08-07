@@ -3,6 +3,10 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 成個設計（封面插圖、六個部分嘅粉彩主色、課文重點框）都係為淺色而設。
+       唔聲明嘅話,手機深色模式會令字色變近白而底色仍然淺 → 白底白字;
+       Android Chrome 嘅「自動深色」亦會強制反轉。-->
+  <meta name="color-scheme" content="light">
 <title>旅遊與款待科・溫習神器</title>
 <style>
 @font-face{
@@ -17,6 +21,7 @@
 }
 
 :root{
+  color-scheme:light;      /* 叫瀏覽器唔好自動反轉 */
   --ink:#1B2340; --ink-soft:#545C7E;
   --paper:#EEF1EC; --paper-raised:#FFFFFF; --paper-sunken:#E4E8DF;
   --line:#CBD1C4;
@@ -31,18 +36,9 @@
   --board-line:rgba(255,255,255,0.12);
   --board-grad:linear-gradient(135deg,#22D3EE,#6366F1,#E879F9);
 }
-@media (prefers-color-scheme:dark){
-  :root{
-    --ink:#E9EBF2; --ink-soft:#A7AEC8;
-    --paper:#121729; --paper-raised:#1B2138; --paper-sunken:#0D1120;
-    --line:#333B5C;
-    --accent:#7FB2DD; --accent-ink:#0E1930; --accent-soft:#22314A;
-    --good:#63C09A; --good-soft:#16302A;
-    --bad:#E58177; --bad-soft:#34201F;
-    --gold:#D8B85F; --gold-soft:#332918;
-    --shadow:rgba(0,0,0,0.5);
-  }
-}
+/* 深色模式已停用：只翻轉咗 16 個變數,但 SEC_TONE、課文框、冊咭
+   等後加嘅嘢全部寫死淺色,唔跟住變,結果 49 處對比度跌到 1.6 以下
+   （最差 1.01,即白底白字）。要支援深色要成套重做。*/
 :root[data-theme="dark"]{
   --ink:#E9EBF2; --ink-soft:#A7AEC8;
   --paper:#121729; --paper-raised:#1B2138; --paper-sunken:#0D1120;
@@ -578,6 +574,8 @@ button:disabled{opacity:1;}
 .p2-qmarks{
   font-size:.68rem;font-weight:700;color:var(--gold);
   background:var(--gold-soft);padding:.15rem .45rem;border-radius:4px;
+  /* 金色對金色淺底只有 2.9:1,細字唔夠 */
+  color:color-mix(in srgb, var(--gold) 52%, #0E1626);
 }
 .p2-qsteps{margin-left:auto;font-size:.7rem;color:var(--ink-soft);}
 .p2-qstem{font-size:.85rem;color:var(--ink-soft);line-height:1.5;font-weight:500;}
@@ -1126,6 +1124,9 @@ button:disabled{opacity:1;}
 .tcg-tag{
   display:block;font-family:'TicketMono',"SF Mono",Menlo,Consolas,monospace;
   font-size:.6rem;letter-spacing:.14em;color:var(--tone);font-weight:700;
+  /* --tone 係冊主色,做 9.6px 細字對白底只有 2.6:1。溝深啲淨係影響呢個字,
+     唔會郁到其他用同一個色嘅填色同邊框。*/
+  color:color-mix(in srgb, var(--tone) 60%, #0E1626);
 }
 .tcg-name{display:block;font-size:1.08rem;font-weight:900;letter-spacing:.01em;}
 .tcg-rarity{display:flex;gap:.12rem;flex:0 0 auto;}
@@ -3504,7 +3505,7 @@ function startSchedule(){
 
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260807-1110";
+var APP_VERSION = "20260808-0106";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
