@@ -1773,7 +1773,7 @@ function loadProgress(){
 }
 /* _downOK：今次載入有冇成功讀過雲端。未讀過就唔准上傳,見 syncUp。
    _dirty ：學生登入之後有冇改過嘢。遲到嘅雲端資料只可以蓋未改過嘅進度。*/
-var _downOK = false, _dirty = false;
+var _downOK = false, _dirty = false, _pushAfterMerge = false;
 function saveProgress(p){
   _dirty = true;
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }catch(e){}
@@ -2831,12 +2831,21 @@ var unitState = {bi:0, ti:0, via:false, fromTeach:null};
 
 function unitList(bi, ti){ return UNIT_IDX[bi + "-" + ti] || []; }
 
+/* 2026 卷一 MC 嘅課題分佈。⚠ 呢啲題目**唔喺** UNIT_IDX 入面——
+   老師用課堂時間實體操練,唔放入 app,所以單元式試題唔會列出佢哋。
+   呢個表淨係餵畀 unitTier 計「必背／常考」,令標記反映九年而唔係八年。
+   30 題入面 26 題有把握歸類;第 6(高鐵臥鋪)、11(酒店收費服務)、
+   21(迪士尼/環球影城)、25(顧客服務性質) 歸唔到,冇夾硬砌。 */
+var MC2026 = {"0-1": 1, "0-11": 1, "0-14": 1, "0-16": 2, "0-17": 1, "0-18": 1, "0-20": 1, "0-22": 2, "0-3": 1, "0-5": 1, "0-9": 1, "1-0": 1, "1-1": 1, "1-11": 2, "1-15": 1, "1-8": 1, "1-9": 1, "2-0": 4, "2-1": 1, "3-15": 1, "3-3": 1, "3-4": 1, "3-6": 1, "3-9": 1};
+function unit2026(bi, ti){ return MC2026[bi + "-" + ti] || 0; }
+
 /* 「必背／常考」分級。73/75 個課題都考過,所以純粹「考過就標」冇分辨作用,
    要按次數分級先幫到學生排優次。門檻同 UNIT_IDX 嘅條數掛鈎。 */
 function unitTier(bi, ti){
-  var n = unitList(bi, ti).length;
-  if(n >= 8) return {lv:"must",  txt:"必背", n:n};
-  if(n >= 3) return {lv:"often", txt:"常考", n:n};
+  var can = unitList(bi, ti).length;      // app 內可以操嘅（2018–25）
+  var n   = can + unit2026(bi, ti);       // 分級依據：連 2026 共九年
+  if(n >= 8) return {lv:"must",  txt:"必背", n:n, can:can, y26:unit2026(bi, ti)};
+  if(n >= 3) return {lv:"often", txt:"常考", n:n, can:can, y26:unit2026(bi, ti)};
   return null;
 }
 /* 課文頂部用長版:除咗標籤仲講埋考過幾多次,同埋可以一撳跳去單元式試題 */
@@ -2847,13 +2856,16 @@ function mustBanner(bi, ti){
   if(n.mc)  bits.push("MC " + n.mc);
   if(n.dbq) bits.push("DBQ " + n.dbq);
   if(n.p2)  bits.push("卷二 " + n.p2);
+  // 2026 唔喺 app 入面操,要分開講,唔好令學生以為列表漏咗題
+  if(t.y26) bits.push("2026 再考 " + t.y26 + "（課堂操）");
   return '<button class="must-bn ' + t.lv + '" data-must-go="' + bi + '-' + ti + '">' +
            '<b>' + t.txt + '</b><span>相關歷屆試題 ' + t.n + ' 條<br>' + bits.join(" / ") + '</span>' +
            '<em>去操返 →</em></button>';
 }
 function mustTag(bi, ti){
   var t = unitTier(bi, ti);
-  return t ? '<span class="must-tag ' + t.lv + '" title="相關歷屆試題 ' + t.n + ' 條">' +
+  return t ? '<span class="must-tag ' + t.lv + '" title="九年歷屆試題 ' + t.n + ' 條'
+         + (t.y26 ? '（其中 ' + t.y26 + ' 條喺 2026 卷,課堂操）' : '') + '">' +
              t.txt + '</span>' : '';
 }
 function unitCount(bi, ti){
@@ -3505,7 +3517,7 @@ function startSchedule(){
 
 /* ---- 版本檢查：解決 GitHub Pages 快取住舊版嘅問題 ----
    只抓幾十 bytes 嘅 version.txt(唔准快取),同內嵌版本唔同就提示更新。 */
-var APP_VERSION = "20260808-0106";
+var APP_VERSION = "20260811-1510";
 function checkVersion(){
   fetch("version.txt?t=" + Date.now(), {cache:"no-store"})
     .then(function(r){ return r.ok ? r.text() : null; })
@@ -3827,6 +3839,11 @@ function syncDown(cb){
           if(!progress.dse) progress.dse = {};
           // 直接寫本機,唔行 saveProgress —— 佢會即刻 syncUp 兼且校污 _dirty
           try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }catch(e){}
+          /* 合併結果同雲端唔同,即係本機有雲端冇嘅嘢（例如成個學期離線溫咗嘅進度）。
+             要即刻推返上去,唔可以等學生下次做動作先——中間閂咗 app 就一直冇備份。*/
+          try{
+            if(JSON.stringify(progress) !== JSON.stringify(d.progress)) _pushAfterMerge = true;
+          }catch(e){}
           got = true;
         }
       }
@@ -3836,9 +3853,13 @@ function syncDown(cb){
       } else {
         finish(got ? "已回復雲端進度 ✓" : "");
       }
-      /* 之前離線做過嘢(_dirty)而家終於讀到雲端 —— 即刻推返合併結果上去,
-         唔係要等學生下一次操作先傳得到,中間閂咗 app 就白做。*/
-      if(_downOK && _dirty && typeof syncUp === "function") syncUp();
+      /* 之前離線做過嘢(_dirty),或者本機有雲端冇嘅進度(_pushAfterMerge) ——
+         即刻推返合併結果上去,唔係要等學生下一次操作先傳得到。*/
+      if(_downOK && (_dirty || _pushAfterMerge) && typeof syncUp === "function"){
+        _pushAfterMerge = false;
+        _dirty = true;                    // syncUp 之後唔會再無限重推
+        syncUp();
+      }
     })
     .catch(function(){ finish("讀取唔到,用本機進度"); });
 }
