@@ -24,9 +24,9 @@ body{margin:0;background:#101820;min-height:100dvh;
      ⚠ 用 rem 嘅話畫面縮細咗字唔會縮,手機打橫一定爆框。*/
   container-type:inline-size;
   /* 基準單位。設計闊度 900px 時 1cqw = 9px,所有尺寸都用 calc(N * var(--u)) 寫。
-     ⚠ 唔可以淨係 1cqw —— 打直時畫面得 375px 闊,字會縮到 6px,睇唔到。
-       所以夾個下限 6.6px（＝設計尺寸嘅 73%）,打直時仍然讀得到。*/
-  --u:max(6.6px, 1cqw);
+     打橫**唔可以落下限** —— 畫面係按高度反推闊度嘅,字一大過比例就即刻擠爆個框。
+     （實測手機全螢幕打橫,畫面得 546px 闊,1cqw=5.46px;落 6.6px 下限即刻大 21%,第三個選項跌咗出框。）*/
+  --u:1cqw;
   background:#2A2118 url(art/briefing/bg.webp) center/cover no-repeat;}
 /* 背景要退後,角色先突出 */
 .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
@@ -181,6 +181,9 @@ body{margin:0;background:#101820;min-height:100dvh;
    打直冇得再撐闊,唯有把個框由 46% 提到 20%,用「遮多啲塊面」換返「文字入得曬」。
    打橫唔受影響（呢個 media query 只喺打直生效）。*/
 @media (orientation:portrait){
+  /* 打直先需要字級下限：畫面被 375px 闊度鎖死,1cqw 得 3.75px,唔落下限個字會細到 6px 睇唔到。
+     打橫唔可以咁做,原因見上面 --u 嗰段。*/
+  .stage{--u:max(6.6px, 1cqw);}
   .box.tall{top:20%;bottom:7%;}
   .box.tall .opt{padding:calc(.6 * var(--u)) calc(1.07 * var(--u));}
 }
