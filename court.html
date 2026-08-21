@@ -2,6 +2,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light">
+<!-- iPhone Safari 冇 element fullscreen API,唯一全螢幕方法係「分享 → 加到主畫面」,
+     加咗呢兩個 meta 之後由主畫面圖示開就會冇瀏覽器工具列。-->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅遊法庭 · 原型</title>
 <style>
 :root{ --ink:#EFF4FF; color-scheme:light; }
@@ -141,6 +146,13 @@ body{margin:0;background:#101820;min-height:100dvh;
 .bar .obj{background:linear-gradient(180deg,#E8434A,#B21F26);color:#fff;
   border-color:#3A0A0C;letter-spacing:.14em;padding:calc(.6 * var(--u)) calc(1.96 * var(--u));}
 .bar .obj:hover{filter:brightness(1.12);}
+/* 全螢幕掣。⚠ 唔係所有瀏覽器都支援（iPhone Safari 一直冇 element fullscreen）,
+   所以預設 hidden,偵測到支援先顯示 —— 擺個撳極都冇反應嘅掣出嚟更差。*/
+.bar .fs{padding:calc(.57 * var(--u)) calc(.9 * var(--u));
+  font-size:calc(1.7 * var(--u));line-height:1;
+  /* ⚠ 呢個掣主要喺手機撳,唔可以淨係跟畫面縮放 —— 實測手機打橫得 26×24px,手指撳唔中。
+     落個絕對下限,桌面版本身已經夠大所以睇唔出分別。*/
+  min-width:38px;min-height:32px;}
 
 /* ── 反對！衝擊圖 ── */
 .boom{position:absolute;inset:0;z-index:9;display:none;place-items:center;
@@ -188,6 +200,7 @@ body{margin:0;background:#101820;min-height:100dvh;
     <button id="nextb">下一句 ▶</button>
     <span class="sp"></span>
     <button class="obj" id="obj">反　對！</button>
+    <button class="fs" id="fs" title="全螢幕" aria-label="全螢幕" hidden>⛶</button>
   </div>
   <div class="boom" id="boom"></div>
   <div class="gnote" id="gnote"></div>
@@ -782,6 +795,35 @@ function nextRound(){
   }
   ROUND=ROUNDS[ORDER[ri]];
   showIntro();
+}
+
+/* ── 全螢幕 ── */
+var fsEl=document.documentElement;
+function fsOn(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+function fsCan(){ return !!(fsEl.requestFullscreen||fsEl.webkitRequestFullscreen); }
+function fsPaint(){
+  var b=el("fs"); if(!b) return;
+  b.textContent = fsOn() ? "⛝" : "⛶";
+  b.title = b.ariaLabel = fsOn() ? "離開全螢幕" : "全螢幕";
+}
+if(fsCan()){
+  el("fs").hidden=false;
+  el("fs").addEventListener("click",function(ev){
+    ev.stopPropagation();
+    /* ⚠ requestFullscreen() 回傳 promise,失敗係 **reject** 唔係 throw ——
+       只寫 try/catch 接唔到,用戶就會見到「撳極都冇反應」,連個原因都唔知。
+       實測 iframe／權限受限嘅環境會 reject 一個 "Permissions check failed"。*/
+    var p;
+    try{
+      p = fsOn() ? (document.exitFullscreen||document.webkitExitFullscreen).call(document)
+                 : (fsEl.requestFullscreen||fsEl.webkitRequestFullscreen).call(fsEl);
+    }catch(e){ note("呢個瀏覽器唔支援全螢幕"); return; }
+    if(p && p.catch) p.catch(function(){ note("呢個瀏覽器唔准全螢幕"); });
+  });
+  ["fullscreenchange","webkitfullscreenchange"].forEach(function(t){
+    document.addEventListener(t,fsPaint);
+  });
+  fsPaint();
 }
 
 el("cover").addEventListener("click",function(){
