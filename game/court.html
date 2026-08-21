@@ -2,14 +2,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light">
+<!-- iPhone Safari 冇 element fullscreen API,唯一全螢幕方法係「分享 → 加到主畫面」,
+     加咗呢兩個 meta 之後由主畫面圖示開就會冇瀏覽器工具列。-->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>旅遊法庭 · 原型</title>
 <style>
 :root{ --ink:#EFF4FF; color-scheme:light; }
 *{box-sizing:border-box;}
-body{margin:0;background:#101820;
+body{margin:0;background:#101820;min-height:100dvh;
   font:16px/1.6 -apple-system,"PingFang HK","Noto Sans HK",sans-serif;
-  display:flex;flex-direction:column;align-items:center;}
-.stage{position:relative;width:100%;max-width:900px;aspect-ratio:16/9;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;}
+/* ⚠ 唔可以淨係寫 width:100% ＋ aspect-ratio —— 高度就由闊度推出嚟,
+   手機打橫（例如 844×390）會變成 844×475,爆出螢幕底,對話框同控制列見唔到。
+   所以闊度要**同時**受螢幕高度夾住：高度可用幾多,就反推最多可以幾闊。
+   3.4rem 係留返俾下面條 .tip 提示（打橫太矮就會隱藏,見文件最底 media query）。*/
+.stage{position:relative;width:min(100%, 900px, calc((100dvh - 3.4rem) * 16 / 9));
+  aspect-ratio:16/9;overflow:hidden;
+  /* 入面所有尺寸用 cqw 跟住畫面縮放。設計闊度 900px → calc(1 * var(--u)) = 9px。
+     ⚠ 用 rem 嘅話畫面縮細咗字唔會縮,手機打橫一定爆框。*/
+  container-type:inline-size;
+  /* 基準單位。設計闊度 900px 時 1cqw = 9px,所有尺寸都用 calc(N * var(--u)) 寫。
+     ⚠ 唔可以淨係 1cqw —— 打直時畫面得 375px 闊,字會縮到 6px,睇唔到。
+       所以夾個下限 6.6px（＝設計尺寸嘅 73%）,打直時仍然讀得到。*/
+  --u:max(6.6px, 1cqw);
   background:#2A2118 url(art/briefing/bg.webp) center/cover no-repeat;}
 /* 背景要退後,角色先突出 */
 .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
@@ -35,45 +52,45 @@ body{margin:0;background:#101820;
   /* ⚠ 唔可以喺呢度加 overflow:auto —— 名牌 .plate 係 top:-13px 凸出框外,
      一開 overflow 就會被剪走（實測名牌變咗暗一橛）。長文字靠 .tall 撐開就夠。*/
   background:linear-gradient(180deg,rgba(20,34,58,.96),rgba(8,16,29,.97));
-  border:2px solid #050B15;border-radius:10px;padding:1rem .95rem .85rem;
+  border:2px solid #050B15;border-radius:10px;padding:calc(1.78 * var(--u)) calc(1.69 * var(--u)) calc(1.51 * var(--u));
   box-shadow:0 5px 0 rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.14);
-  color:var(--ink);min-height:6.6rem;cursor:pointer;}
-.plate{position:absolute;top:-13px;left:16px;
+  color:var(--ink);min-height:calc(11.7 * var(--u));cursor:pointer;}
+.plate{position:absolute;top:calc(-1.44 * var(--u));left:calc(1.78 * var(--u));
   background:linear-gradient(180deg,#5AB0DC,#2A6FA8);border:2px solid #050B15;
-  border-radius:5px;padding:1px 14px;font-size:.82rem;font-weight:800;letter-spacing:.05em;
+  border-radius:5px;padding:calc(.11 * var(--u)) calc(1.56 * var(--u));font-size:calc(1.46 * var(--u));font-weight:800;letter-spacing:.05em;
   box-shadow:0 2px 0 rgba(0,0,0,.3);}
-.line{margin:0;font-size:1.02rem;min-height:3.2em;white-space:pre-wrap;}
+.line{margin:0;font-size:calc(1.81 * var(--u));min-height:3.2em;white-space:pre-wrap;}
 /* 角色維持原大小,所以個框要由頭部下面開始（實測頭部去到約 38%）。
    ⚠ 選項改成「三個都係一行」之後個框短咗好多,可以由 39% 放返落 46%,露多啲塊面。
      再低就唔夠位擺三個選項。*/
 .box.tall{top:46%;bottom:10.5%;max-height:none;}
 /* 指證階段選項多,字要細啲先入得晒 */
-.box.tall .opt{font-size:.86rem;padding:.45rem .6rem;}
-.box.tall .line{font-size:.96rem;min-height:0;}
-.next{position:absolute;right:14px;bottom:9px;color:#FFD84A;font-weight:800;
+.box.tall .opt{font-size:calc(1.53 * var(--u));padding:calc(.8 * var(--u)) calc(1.07 * var(--u));}
+.box.tall .line{font-size:calc(1.71 * var(--u));min-height:0;}
+.next{position:absolute;right:calc(1.56 * var(--u));bottom:calc(1 * var(--u));color:#FFD84A;font-weight:800;font-size:calc(1.6 * var(--u));
   animation:blink 1s steps(2) infinite;}
 @keyframes blink{50%{opacity:.25;}}
 
 /* 指證：四個頭像排開 */
 .pick{position:absolute;inset:0;z-index:6;background:rgba(8,14,24,.82);
-  display:none;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;}
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:calc(1.24 * var(--u));}
 .pick.on{display:flex;}
-.pick h2{color:#FFD84A;margin:0;font-size:1.05rem;letter-spacing:.06em;}
+.pick h2{color:#FFD84A;margin:0;font-size:calc(1.87 * var(--u));letter-spacing:.06em;}
 .row{display:flex;gap:1.4%;justify-content:center;width:96%;}
 .card{flex:1;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.24);
-  border-radius:10px;padding:.4rem .2rem .5rem;cursor:pointer;text-align:center;color:var(--ink);
+  border-radius:10px;padding:calc(.71 * var(--u)) calc(.36 * var(--u)) calc(.89 * var(--u));cursor:pointer;text-align:center;color:var(--ink);
   transition:transform .12s, border-color .12s, background .12s;}
 .card:hover{transform:translateY(-5px);border-color:#FFD84A;background:rgba(255,216,74,.14);}
 .card img{width:100%;display:block;}
-.card b{font-size:.82rem;}
+.card b{font-size:calc(1.46 * var(--u));}
 
 /* 三選一 */
-.opts{margin-top:.55rem;display:grid;gap:6px;}
-.opt{text-align:left;padding:.55rem .65rem;border-radius:8px;cursor:pointer;
+.opts{margin-top:calc(.98 * var(--u));display:grid;gap:calc(.67 * var(--u));}
+.opt{text-align:left;padding:calc(.98 * var(--u)) calc(1.16 * var(--u));border-radius:8px;cursor:pointer;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.22);
-  color:#E9F0FB;font:inherit;font-size:.9rem;}
+  color:#E9F0FB;font:inherit;font-size:calc(1.6 * var(--u));}
 .opt:hover{background:rgba(255,255,255,.16);border-color:#7FC4F0;}
-.opt b{color:#FFD84A;margin-right:.4rem;}
+.opt b{color:#FFD84A;margin-right:calc(.71 * var(--u));}
 .opt.ok{background:rgba(70,200,140,.24);border-color:#5ADCA0;}
 .opt.no{background:rgba(235,95,140,.24);border-color:#FF82AA;}
 
@@ -83,7 +100,7 @@ body{margin:0;background:#101820;
   /* ⚠ 暗罩要比 .intro 淺好多(呢度先係想睇背景),但唔可以完全冇 ——
      abstract 個幾何空間同 fruit 個果園係淺色底,白字會消失。*/
   background:radial-gradient(ellipse at 50% 50%, rgba(6,11,20,.30), rgba(4,8,15,.64));}
-.cover .rn{position:relative;color:#F4F8FF;font-weight:800;font-size:2.7rem;letter-spacing:.34em;
+.cover .rn{position:relative;color:#F4F8FF;font-weight:800;font-size:calc(4.8 * var(--u));letter-spacing:.34em;
   text-indent:.34em;   /* ⚠ letter-spacing 會喺最後一個字後面都加空隙,唔補返 text-indent 就會偏左 */
   text-shadow:0 2px 0 rgba(0,0,0,.55), 0 0 30px rgba(0,0,0,.6);}
 /* 只喺字後面落一層柔暈,唔壓暗成幅背景 —— abstract 同 fruit 係淺色底,淨靠 text-shadow 唔夠爽利 */
@@ -93,42 +110,49 @@ body{margin:0;background:#101820;
 
 /* ── 開場：講明呢個回合考咩 ── */
 .intro{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:.5rem;text-align:center;color:#EFF4FF;
+  align-items:center;justify-content:center;gap:calc(.89 * var(--u));text-align:center;color:#EFF4FF;
   background:radial-gradient(ellipse at 50% 45%, rgba(10,18,32,.72), rgba(6,11,20,.93));}
-.intro .rd{color:#8C9BB2;font-size:.85rem;letter-spacing:.22em;}
-.intro h1{margin:.1rem 0 .2rem;font-size:2rem;letter-spacing:.04em;
+.intro .rd{color:#8C9BB2;font-size:calc(1.51 * var(--u));letter-spacing:.22em;}
+.intro h1{margin:calc(.18 * var(--u)) 0 calc(.36 * var(--u));font-size:calc(3.56 * var(--u));letter-spacing:.04em;
   text-shadow:0 3px 0 rgba(0,0,0,.45);}
-.intro .sub{color:#BCC9DC;font-size:.92rem;max-width:78%;line-height:1.7;}
-.intro .src{color:#7F8DA3;font-size:.78rem;margin-top:.2rem;}
-.intro button{margin-top:1rem;padding:.6rem 2.1rem;border:2px solid #050B15;border-radius:8px;
-  background:linear-gradient(180deg,#5AB0DC,#2A6FA8);color:#fff;font:inherit;font-weight:800;
+.intro .sub{color:#BCC9DC;font-size:calc(1.64 * var(--u));max-width:78%;line-height:1.7;}
+.intro .src{color:#7F8DA3;font-size:calc(1.39 * var(--u));margin-top:calc(.36 * var(--u));}
+.intro button{margin-top:calc(1.78 * var(--u));padding:calc(1.07 * var(--u)) calc(3.73 * var(--u));border:2px solid #050B15;border-radius:8px;
+  background:linear-gradient(180deg,#5AB0DC,#2A6FA8);color:#fff;font:inherit;font-weight:800;font-size:calc(1.78 * var(--u));
   letter-spacing:.1em;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.35);}
 .intro button:hover{filter:brightness(1.1);}
 
 /* 成績記錄提示 ＋ 返回主 app */
-.gnote{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:12;
-  padding:.34rem .8rem;border-radius:999px;background:rgba(8,14,26,.86);color:#DCE7F5;
-  font-size:.76rem;opacity:0;transition:opacity .3s;pointer-events:none;}
+.gnote{position:absolute;left:50%;top:calc(.89 * var(--u));transform:translateX(-50%);z-index:12;
+  padding:calc(.6 * var(--u)) calc(1.42 * var(--u));border-radius:999px;background:rgba(8,14,26,.86);color:#DCE7F5;
+  font-size:calc(1.35 * var(--u));opacity:0;transition:opacity .3s;pointer-events:none;}
 .gnote.on{opacity:1;}
-.gback{position:absolute;left:8px;top:8px;z-index:12;width:30px;height:30px;border-radius:8px;
+.gback{position:absolute;left:calc(.89 * var(--u));top:calc(.89 * var(--u));z-index:12;width:calc(3.33 * var(--u));height:calc(3.33 * var(--u));border-radius:8px;
   display:flex;align-items:center;justify-content:center;text-decoration:none;
-  background:rgba(8,14,26,.5);color:#CFE0F5;font-size:1rem;}
+  background:rgba(8,14,26,.5);color:#CFE0F5;font-size:calc(1.78 * var(--u));}
 .gback:hover{background:rgba(8,14,26,.75);}
 
 /* ── 底部控制列 ── */
 .bar{position:absolute;left:2.2%;right:2.2%;bottom:.5%;z-index:6;
-  display:flex;align-items:center;gap:.5rem;}
-.bar button{border:2px solid #050B15;border-radius:7px;padding:.32rem .8rem;
-  font:inherit;font-size:.84rem;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:calc(.89 * var(--u));}
+.bar button{border:2px solid #050B15;border-radius:7px;padding:calc(.57 * var(--u)) calc(1.42 * var(--u));
+  font:inherit;font-size:calc(1.49 * var(--u));font-weight:700;cursor:pointer;
   background:rgba(30,48,80,.92);color:#DCE6F5;box-shadow:0 2px 0 rgba(0,0,0,.3);}
 .bar button:disabled{opacity:.38;cursor:default;}
 .bar button:not(:disabled):hover{background:rgba(52,80,124,.95);}
-.bar .pos{color:#9FB4D4;font-size:.8rem;font-variant-numeric:tabular-nums;min-width:4.2rem;
+.bar .pos{color:#9FB4D4;font-size:calc(1.42 * var(--u));font-variant-numeric:tabular-nums;min-width:calc(7.5 * var(--u));
   text-align:center;}
 .bar .sp{flex:1;}
 .bar .obj{background:linear-gradient(180deg,#E8434A,#B21F26);color:#fff;
-  border-color:#3A0A0C;letter-spacing:.14em;padding:.34rem 1.1rem;}
+  border-color:#3A0A0C;letter-spacing:.14em;padding:calc(.6 * var(--u)) calc(1.96 * var(--u));}
 .bar .obj:hover{filter:brightness(1.12);}
+/* 全螢幕掣。⚠ 唔係所有瀏覽器都支援（iPhone Safari 一直冇 element fullscreen）,
+   所以預設 hidden,偵測到支援先顯示 —— 擺個撳極都冇反應嘅掣出嚟更差。*/
+.bar .fs{padding:calc(.57 * var(--u)) calc(.9 * var(--u));
+  font-size:calc(1.7 * var(--u));line-height:1;
+  /* ⚠ 呢個掣主要喺手機撳,唔可以淨係跟畫面縮放 —— 實測手機打橫得 26×24px,手指撳唔中。
+     落個絕對下限,桌面版本身已經夠大所以睇唔出分別。*/
+  min-width:38px;min-height:32px;}
 
 /* ── 反對！衝擊圖 ── */
 .boom{position:absolute;inset:0;z-index:9;display:none;place-items:center;
@@ -141,11 +165,25 @@ body{margin:0;background:#101820;
                 100%{transform:scale(1) rotate(0);}}
 @media (prefers-reduced-motion:reduce){.boom.on,.boom svg{animation:none;}}
 
-.hp{position:absolute;top:10px;right:14px;z-index:6;display:flex;gap:5px;}
-.hp i{width:15px;height:15px;border-radius:50%;background:#FFD84A;
+.hp{position:absolute;top:calc(1.11 * var(--u));right:calc(1.56 * var(--u));z-index:6;display:flex;gap:calc(.56 * var(--u));}
+.hp i{width:calc(1.67 * var(--u));height:calc(1.67 * var(--u));border-radius:50%;background:#FFD84A;
   border:2px solid #050B15;box-shadow:0 2px 0 rgba(0,0,0,.3);}
 .hp i.off{background:#4A5566;}
-.tip{color:#8C9BB2;font-size:.8rem;margin:.6rem 0 1.2rem;}
+.tip{color:#8C9BB2;font-size:.8rem;margin:.6rem 0 1.2rem;text-align:center;padding:0 .8rem;}
+/* 手機打橫,高度好矜貴：收起提示條,畫面食盡成個高度。
+   操作提示喺畫面底部條控制列本身已經睇到（◀ 上一句 / 下一句 ▶ / 反對！）。*/
+@media (orientation:landscape) and (max-height:560px){
+  .tip{display:none;}
+  .stage{width:min(100%, 900px, calc(100dvh * 16 / 9));}
+}
+/* 打直：畫面被闊度鎖死（375px 闊 → 只有 211px 高）,三選一嗰陣個框點都放唔落。
+   ⚠ 呢個唔係新問題 —— 改成 cqw 之前已經爆 95px,而家先爆 57px。
+   打直冇得再撐闊,唯有把個框由 46% 提到 20%,用「遮多啲塊面」換返「文字入得曬」。
+   打橫唔受影響（呢個 media query 只喺打直生效）。*/
+@media (orientation:portrait){
+  .box.tall{top:20%;bottom:7%;}
+  .box.tall .opt{padding:calc(.6 * var(--u)) calc(1.07 * var(--u));}
+}
 </style>
 
 <div class="stage" id="stage">
@@ -162,6 +200,7 @@ body{margin:0;background:#101820;
     <button id="nextb">下一句 ▶</button>
     <span class="sp"></span>
     <button class="obj" id="obj">反　對！</button>
+    <button class="fs" id="fs" title="全螢幕" aria-label="全螢幕" hidden>⛶</button>
   </div>
   <div class="boom" id="boom"></div>
   <div class="gnote" id="gnote"></div>
@@ -676,7 +715,7 @@ function pickOpt(n,btn){
   el("plate").textContent="指證成立";
   el("line").innerHTML="<b style='color:#5ADCA0'>指證成立。</b>（正確答案："+"ABC"[n]+"）<br>"+
     ROUND.note.replace(/\n/g,"<br>")+
-    "<br><span style='color:#8C9BB2;font-size:.86rem'>"+ROUND.src+"</span>";
+    "<br><span style='color:#8C9BB2;font-size:calc(1.53 * var(--u))'>"+ROUND.src+"</span>";
   el("next").style.display="";
 }
 
@@ -756,6 +795,35 @@ function nextRound(){
   }
   ROUND=ROUNDS[ORDER[ri]];
   showIntro();
+}
+
+/* ── 全螢幕 ── */
+var fsEl=document.documentElement;
+function fsOn(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+function fsCan(){ return !!(fsEl.requestFullscreen||fsEl.webkitRequestFullscreen); }
+function fsPaint(){
+  var b=el("fs"); if(!b) return;
+  b.textContent = fsOn() ? "⛝" : "⛶";
+  b.title = b.ariaLabel = fsOn() ? "離開全螢幕" : "全螢幕";
+}
+if(fsCan()){
+  el("fs").hidden=false;
+  el("fs").addEventListener("click",function(ev){
+    ev.stopPropagation();
+    /* ⚠ requestFullscreen() 回傳 promise,失敗係 **reject** 唔係 throw ——
+       只寫 try/catch 接唔到,用戶就會見到「撳極都冇反應」,連個原因都唔知。
+       實測 iframe／權限受限嘅環境會 reject 一個 "Permissions check failed"。*/
+    var p;
+    try{
+      p = fsOn() ? (document.exitFullscreen||document.webkitExitFullscreen).call(document)
+                 : (fsEl.requestFullscreen||fsEl.webkitRequestFullscreen).call(fsEl);
+    }catch(e){ note("呢個瀏覽器唔支援全螢幕"); return; }
+    if(p && p.catch) p.catch(function(){ note("呢個瀏覽器唔准全螢幕"); });
+  });
+  ["fullscreenchange","webkitfullscreenchange"].forEach(function(t){
+    document.addEventListener(t,fsPaint);
+  });
+  fsPaint();
 }
 
 el("cover").addEventListener("click",function(){
