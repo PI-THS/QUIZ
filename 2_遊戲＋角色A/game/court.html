@@ -1,0 +1,793 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>旅遊法庭 · 原型</title>
+<style>
+:root{ --ink:#EFF4FF; color-scheme:light; }
+*{box-sizing:border-box;}
+body{margin:0;background:#101820;
+  font:16px/1.6 -apple-system,"PingFang HK","Noto Sans HK",sans-serif;
+  display:flex;flex-direction:column;align-items:center;}
+.stage{position:relative;width:100%;max-width:900px;aspect-ratio:16/9;overflow:hidden;
+  background:#2A2118 url(art/briefing/bg.webp) center/cover no-repeat;}
+/* 背景要退後,角色先突出 */
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 46%, rgba(20,12,4,.42) 100%);}
+
+/* 角色立繪：貼住底邊。
+   ⚠ 長文字階段（指證／結算）一定要加 .up —— 三個選項一出,個框就長到冚住成塊面。
+     縮細移上之後,個頭永遠喺框上面,睇得到表情先有戲。*/
+.who{position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  height:96%;z-index:2;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45));
+  animation:pop .22s ease-out;transition:height .3s ease, top .3s ease;}
+.who.up{height:31%;bottom:auto;top:2%;}
+@keyframes pop{from{opacity:0;transform:translateX(-50%) translateY(10px) scale(.985);}
+               to{opacity:1;transform:translateX(-50%);}}
+.who.shake{animation:shake .38s;}
+@keyframes shake{0%,100%{transform:translateX(-50%);}
+  20%{transform:translateX(-50%) translate(-7px,2px);}
+  45%{transform:translateX(-50%) translate(6px,-2px);}
+  70%{transform:translateX(-50%) translate(-4px,1px);}}
+
+/* 對話框 */
+.box{position:absolute;left:2.2%;right:2.2%;bottom:11%;z-index:5;
+  /* ⚠ 唔可以喺呢度加 overflow:auto —— 名牌 .plate 係 top:-13px 凸出框外,
+     一開 overflow 就會被剪走（實測名牌變咗暗一橛）。長文字靠 .tall 撐開就夠。*/
+  background:linear-gradient(180deg,rgba(20,34,58,.96),rgba(8,16,29,.97));
+  border:2px solid #050B15;border-radius:10px;padding:1rem .95rem .85rem;
+  box-shadow:0 5px 0 rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.14);
+  color:var(--ink);min-height:6.6rem;cursor:pointer;}
+.plate{position:absolute;top:-13px;left:16px;
+  background:linear-gradient(180deg,#5AB0DC,#2A6FA8);border:2px solid #050B15;
+  border-radius:5px;padding:1px 14px;font-size:.82rem;font-weight:800;letter-spacing:.05em;
+  box-shadow:0 2px 0 rgba(0,0,0,.3);}
+.line{margin:0;font-size:1.02rem;min-height:3.2em;white-space:pre-wrap;}
+/* 角色維持原大小,所以個框要由頭部下面開始（實測頭部去到約 38%）。
+   ⚠ 選項改成「三個都係一行」之後個框短咗好多,可以由 39% 放返落 46%,露多啲塊面。
+     再低就唔夠位擺三個選項。*/
+.box.tall{top:46%;bottom:10.5%;max-height:none;}
+/* 指證階段選項多,字要細啲先入得晒 */
+.box.tall .opt{font-size:.86rem;padding:.45rem .6rem;}
+.box.tall .line{font-size:.96rem;min-height:0;}
+.next{position:absolute;right:14px;bottom:9px;color:#FFD84A;font-weight:800;
+  animation:blink 1s steps(2) infinite;}
+@keyframes blink{50%{opacity:.25;}}
+
+/* 指證：四個頭像排開 */
+.pick{position:absolute;inset:0;z-index:6;background:rgba(8,14,24,.82);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;}
+.pick.on{display:flex;}
+.pick h2{color:#FFD84A;margin:0;font-size:1.05rem;letter-spacing:.06em;}
+.row{display:flex;gap:1.4%;justify-content:center;width:96%;}
+.card{flex:1;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.24);
+  border-radius:10px;padding:.4rem .2rem .5rem;cursor:pointer;text-align:center;color:var(--ink);
+  transition:transform .12s, border-color .12s, background .12s;}
+.card:hover{transform:translateY(-5px);border-color:#FFD84A;background:rgba(255,216,74,.14);}
+.card img{width:100%;display:block;}
+.card b{font-size:.82rem;}
+
+/* 三選一 */
+.opts{margin-top:.55rem;display:grid;gap:6px;}
+.opt{text-align:left;padding:.55rem .65rem;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.22);
+  color:#E9F0FB;font:inherit;font-size:.9rem;}
+.opt:hover{background:rgba(255,255,255,.16);border-color:#7FC4F0;}
+.opt b{color:#FFD84A;margin-right:.4rem;}
+.opt.ok{background:rgba(70,200,140,.24);border-color:#5ADCA0;}
+.opt.no{background:rgba(235,95,140,.24);border-color:#FF82AA;}
+
+/* ── 回合封面：淨係背景圖 ＋「第X回合」,1.5 秒後自動入開場,撳一下／撳掣可以即刻跳 ── */
+.cover{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;opacity:1;transition:opacity .38s ease;
+  /* ⚠ 暗罩要比 .intro 淺好多(呢度先係想睇背景),但唔可以完全冇 ——
+     abstract 個幾何空間同 fruit 個果園係淺色底,白字會消失。*/
+  background:radial-gradient(ellipse at 50% 50%, rgba(6,11,20,.30), rgba(4,8,15,.64));}
+.cover .rn{position:relative;color:#F4F8FF;font-weight:800;font-size:2.7rem;letter-spacing:.34em;
+  text-indent:.34em;   /* ⚠ letter-spacing 會喺最後一個字後面都加空隙,唔補返 text-indent 就會偏左 */
+  text-shadow:0 2px 0 rgba(0,0,0,.55), 0 0 30px rgba(0,0,0,.6);}
+/* 只喺字後面落一層柔暈,唔壓暗成幅背景 —— abstract 同 fruit 係淺色底,淨靠 text-shadow 唔夠爽利 */
+.cover .rn::before{content:"";position:absolute;z-index:-1;left:-16%;right:-16%;top:-46%;bottom:-46%;
+  background:radial-gradient(ellipse at 50% 50%, rgba(4,8,15,.66), rgba(4,8,15,0) 70%);}
+.cover.out{opacity:0;pointer-events:none;}
+
+/* ── 開場：講明呢個回合考咩 ── */
+.intro{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:.5rem;text-align:center;color:#EFF4FF;
+  background:radial-gradient(ellipse at 50% 45%, rgba(10,18,32,.72), rgba(6,11,20,.93));}
+.intro .rd{color:#8C9BB2;font-size:.85rem;letter-spacing:.22em;}
+.intro h1{margin:.1rem 0 .2rem;font-size:2rem;letter-spacing:.04em;
+  text-shadow:0 3px 0 rgba(0,0,0,.45);}
+.intro .sub{color:#BCC9DC;font-size:.92rem;max-width:78%;line-height:1.7;}
+.intro .src{color:#7F8DA3;font-size:.78rem;margin-top:.2rem;}
+.intro button{margin-top:1rem;padding:.6rem 2.1rem;border:2px solid #050B15;border-radius:8px;
+  background:linear-gradient(180deg,#5AB0DC,#2A6FA8);color:#fff;font:inherit;font-weight:800;
+  letter-spacing:.1em;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.intro button:hover{filter:brightness(1.1);}
+
+/* 成績記錄提示 ＋ 返回主 app */
+.gnote{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:12;
+  padding:.34rem .8rem;border-radius:999px;background:rgba(8,14,26,.86);color:#DCE7F5;
+  font-size:.76rem;opacity:0;transition:opacity .3s;pointer-events:none;}
+.gnote.on{opacity:1;}
+.gback{position:absolute;left:8px;top:8px;z-index:12;width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;text-decoration:none;
+  background:rgba(8,14,26,.5);color:#CFE0F5;font-size:1rem;}
+.gback:hover{background:rgba(8,14,26,.75);}
+
+/* ── 底部控制列 ── */
+.bar{position:absolute;left:2.2%;right:2.2%;bottom:.5%;z-index:6;
+  display:flex;align-items:center;gap:.5rem;}
+.bar button{border:2px solid #050B15;border-radius:7px;padding:.32rem .8rem;
+  font:inherit;font-size:.84rem;font-weight:700;cursor:pointer;
+  background:rgba(30,48,80,.92);color:#DCE6F5;box-shadow:0 2px 0 rgba(0,0,0,.3);}
+.bar button:disabled{opacity:.38;cursor:default;}
+.bar button:not(:disabled):hover{background:rgba(52,80,124,.95);}
+.bar .pos{color:#9FB4D4;font-size:.8rem;font-variant-numeric:tabular-nums;min-width:4.2rem;
+  text-align:center;}
+.bar .sp{flex:1;}
+.bar .obj{background:linear-gradient(180deg,#E8434A,#B21F26);color:#fff;
+  border-color:#3A0A0C;letter-spacing:.14em;padding:.34rem 1.1rem;}
+.bar .obj:hover{filter:brightness(1.12);}
+
+/* ── 反對！衝擊圖 ── */
+.boom{position:absolute;inset:0;z-index:9;display:none;place-items:center;
+  background:rgba(0,0,0,.28);}
+.boom.on{display:grid;animation:flash .5s;}
+@keyframes flash{0%{background:rgba(255,255,255,.9);}18%{background:rgba(0,0,0,.28);}}
+.boom svg{width:84%;max-width:620px;animation:slam .42s cubic-bezier(.16,1.5,.4,1);}
+@keyframes slam{0%{transform:scale(.2) rotate(-14deg);opacity:0;}
+                55%{transform:scale(1.12) rotate(3deg);opacity:1;}
+                100%{transform:scale(1) rotate(0);}}
+@media (prefers-reduced-motion:reduce){.boom.on,.boom svg{animation:none;}}
+
+.hp{position:absolute;top:10px;right:14px;z-index:6;display:flex;gap:5px;}
+.hp i{width:15px;height:15px;border-radius:50%;background:#FFD84A;
+  border:2px solid #050B15;box-shadow:0 2px 0 rgba(0,0,0,.3);}
+.hp i.off{background:#4A5566;}
+.tip{color:#8C9BB2;font-size:.8rem;margin:.6rem 0 1.2rem;}
+</style>
+
+<div class="stage" id="stage">
+  <div class="hp" id="hp"></div>
+  <img class="who" id="who" alt="">
+  <div class="box" id="box">
+    <span class="plate" id="plate">　</span>
+    <p class="line" id="line"></p>
+    <span class="next" id="next">▼</span>
+  </div>
+  <div class="bar" id="bar">
+    <button id="prev">◀ 上一句</button>
+    <span class="pos" id="pos">1 / 8</span>
+    <button id="nextb">下一句 ▶</button>
+    <span class="sp"></span>
+    <button class="obj" id="obj">反　對！</button>
+  </div>
+  <div class="boom" id="boom"></div>
+  <div class="gnote" id="gnote"></div>
+  <a class="gback" href="../index.html" title="返回溫習神器">←</a>
+  <div class="cover" id="cover"><div class="rn" id="coverRd">第 一 回 合</div></div>
+  <div class="intro" id="intro">
+    <div class="rd">第 一 回 合</div>
+    <h1 id="topic">經濟「流失」</h1>
+    <p class="sub" id="brief">以下四位會就這個概念各說兩句。<br>
+      其中一位說錯了——讀到不對勁的一句，就按下「反對！」。</p>
+    <p class="src" id="src">💡 要點</p>
+    <button id="go">開　始</button>
+  </div>
+</div>
+<p class="tip">◀ ▶ 前後翻睇　·　覺得邊句唔對路就撳「反對！」　·　鍵盤：← → 翻頁、Enter 反對</p>
+
+<script>
+(function(){
+"use strict";
+
+/* ═══════════ 回合資料 ═══════════ */
+/* ⚠⚠ 講錯嗰個「排第幾」一定要輪流。三個回合全部排第四位嘅話,
+      玩家兩局之內就會發現「撳最後一個講嘢嗰個」必中,成個推理環節就死咗。
+      而家:回合一第 2 位、回合二第 4 位、回合三第 1 位。加新回合記住繼續錯開。*/
+var ROUNDS = [
+{
+  topic:"經濟「流失」",
+  brief:"流失分兩類，名字很容易誤導。<br>有一位把兩類調換了。",
+  src:"💡 要點：<b>貨品進來</b>＝進口貨品所引致；<b>盈利出去</b>＝出口貨品所引致",
+  wrong:3,
+  say:[
+    {r:0, e:0, t:"旅遊業的經濟負面影響之中，有一項稱為「流失」，指的是資金流出境外。"},
+    {r:0, e:0, t:"流失分兩類：進口貨品所引致的，以及出口貨品所引致的。"},
+    {r:3, e:0, t:"香港一間酒店由新加坡集團持有，集團把賺得的利潤帶返新加坡——這屬於進口貨品所引致的流失。"},
+    {r:3, e:1, t:"而香港人買入產自美國的水果，則屬於出口貨品所引致的流失。"},
+    {r:1, e:0, t:"進口貨品所引致的流失，是指目的地須從海外進口貨品，以滿足旅客的需求。"},
+    {r:1, e:1, t:"出口貨品所引致的流失，是指外資企業把在本地賺取的盈利帶返該國——注意，帶走的是盈利，不是貨品。"},
+    {r:2, e:0, t:"聯合國環境署曾指出，發展中國家來自已發展國家的旅客每消費一百美元，只有五美元留用於目的地市場之內。"},
+    {r:2, e:1, t:"所以外資渡假村興建得愈多，流失便愈大——因為盈利會一筆一筆匯回去。"}
+  ],
+  hints:[
+    "流失分兩類，一類講貨品進來，一類講盈利出去。有哪一位把兩類調換了？",
+    "再提示：外資酒店把利潤匯返總公司所在國——這是貨品進來，還是盈利出去？"
+  ],
+  opts:[
+    {t:"兩句都對，兩類流失的分法正是如此。", ok:false,
+     why:"兩句剛好<b>調換</b>了。匯走利潤的是出口那一類，買入外國貨的才是進口那一類。<br><span style='color:#8FB4D8'>提示：先問一句——這一句講的是貨品進來，還是盈利出去？</span>"},
+    {t:"兩句剛好調換：匯走利潤才是出口那類。", ok:true},
+    {t:"兩者都屬進口貨品所引致的流失一類。", ok:false,
+     why:"外資酒店匯走利潤，過程中<b>沒有任何貨品進口</b>，不可能屬進口那一類。<br><span style='color:#8FB4D8'>提示：兩類流失是分開的，不要把兩件事塞進同一類。</span>"}
+  ],
+  note:"流失分兩類。<b>進口貨品所引致的流失</b>——目的地須從海外進口貨品以滿足旅客的需求，例如香港人買入產自美國的水果。\n<b>出口貨品所引致的流失</b>——外資企業把在本地賺取的盈利帶返該國，例如由新加坡集團持有的酒店把利潤匯返新加坡。\n⚠ 「出口」講的不是把貨品出口，而是把<b>盈利</b>帶走——這個名字最容易誤導。"
+},
+{
+  topic:"旅遊業對文化的影響",
+  brief:"這一回合要判斷兩個推論。<br>有一位兩句都推錯了。",
+  src:"💡 要點：經濟得益與文化損失是兩回事，<b>不能互相抵消</b>",
+  wrong:3,
+  say:[
+    {r:0, e:0, t:"當地文化既可吸引旅客，同時亦可嚇跑旅客——例如某些地方有食用野生動物的習慣，又或有傷害身體的宗教儀式。"},
+    {r:0, e:1, t:"文化商業化，是指手工藝品因迎合旅客喜好而被大量生產，失去原有的文化意義。"},
+    {r:1, e:0, t:"還有示範效應——當地年輕人會模仿旅客的服飾、飲食習慣及消費模式。"},
+    {r:1, e:1, t:"其後果通常是當地人（尤其年輕人）產生挫折感，甚至對旅客抱有敵意心態。"},
+    {r:2, e:0, t:"東道國為迎合旅客喜好而改變傳統文化和價值觀，等於犧牲文化來換取經濟發展。"},
+    {r:2, e:1, t:"而文化受不受影響，取決於旅客本身有沒有尊重當地文化，跟旅客屬哪一類無關。"},
+    {r:3, e:0, t:"有個地區的傳統習俗被商業化之後，每年為當地帶來可觀收入——所以文化上的損失已經被抵消了。"},
+    {r:3, e:1, t:"而且那裡的旅客大多是個別的群體旅客，所以當地文化不會受到影響。"}
+  ],
+  hints:[
+    "這一回合有兩句推論：一句講錢能不能補回文化，一句講旅客類型。兩句都要驗一次。",
+    "再提示：習俗一旦被商業化，即使賺到錢，原有特色回得來嗎？旅客的分類又決定得了什麼？"
+  ],
+  opts:[
+    {t:"抵消那句對，旅客類型那句才是錯的。", ok:false,
+     why:"抵消那句<b>同樣不成立</b>。被商業化的習俗可能已失去原有特色，收入補不回來。<br><span style='color:#8FB4D8'>提示：習俗一旦被商業化，原有特色回得來嗎？</span>"},
+    {t:"兩句都錯：收入補不回文化，類型也不決定。", ok:true},
+    {t:"兩句都對，有收入又有優質客源就沒問題。", ok:false,
+     why:"收入與文化流失是<b>兩回事</b>；而且不論何種類型的旅客，只要旅客沒有尊重當地文化，文化仍會受影響。<br><span style='color:#8FB4D8'>提示：影響取決於旅客的<b>行為</b>，不是旅客的分類。</span>"}
+  ],
+  note:"某地區的習俗被商業化，的確能帶來收入，但被商業化的習俗可能<b>已失去原有特色</b>——收入與文化流失是兩回事，不能相抵。\n至於旅客類型：不論何種類型的旅客，只要旅客本身沒有尊重當地文化，當地文化仍會受到影響。\n影響取決於旅客的<b>行為</b>，不是旅客的<b>分類</b>。"
+},
+{
+  topic:"資金流動的三重效應",
+  brief:"這是最容易混淆的概念之一。<br>三重之間的分界，只有一條。",
+  src:"💡 要點：旅客付款＝第一重　企業把錢用出去＝第二重　收款人再花費＝第三重",
+  wrong:3,
+  say:[
+    {r:3, e:0, t:"航空公司支付薪酬給機師，這筆錢已經到了員工手上，所以屬於第三重效應。"},
+    {r:3, e:1, t:"同樣道理，餐廳向供應商購入食材，也是第三重。"},
+    {r:0, e:0, t:"資金流動的三重效應，描述的是資金進入東道國之後，一部分流失，一部分留在當地，並產生連鎖效應。"},
+    {r:0, e:0, t:"第一重是資金進入東道國。例如旅客花費二萬元，其中一萬四千元用於機票及出發地旅行社的成本和利潤，真正進入東道國的只有六千元。"},
+    {r:1, e:0, t:"舉例：旅客在酒店繳付房租、在主題樂園購買入場券，都是第一重。即使是旅行社代旅客預繳的住宿費，同樣算第一重。"},
+    {r:1, e:1, t:"第二重是那六千元在本地怎樣用——食、住、行、遊、購、娛。企業收到錢之後，用來支付員工薪酬、購買物資、償還借貸利息，餘下的才是利潤。"},
+    {r:2, e:0, t:"第三重就是：企業東主把賺到的錢再投資，而員工則把薪金用於消費、儲蓄和交稅。"},
+    {r:2, e:1, t:"所以酒店經營者用利潤投資另一間酒店、餐廳經理繳交薪俸稅，都屬於第三重。"}
+  ],
+  hints:[
+    "三重之間的分界，在於資金走到哪一步：旅客付款是第一重、企業把錢用出去是第二重、收款人再花費才是第三重。有哪一位把步驟放錯了？",
+    "再提示：留意誰在談「企業支付出去」的例子。企業<b>付出去的那一刻</b>，應該算第幾重？"
+  ],
+  opts:[
+    {t:"兩者都屬第一重，因為資金仍在旅遊企業之間流轉。", ok:false,
+     why:"第一重是指<b>旅客把錢交給東道國</b>的那一刻，例如繳付房租、購買入場券。企業之間的支付已經是下一步了。<br><span style='color:#8FB4D8'>提示：先問一句——這筆錢是不是旅客直接付出的？</span>"},
+    {t:"兩者都屬第二重，都是企業把收到的錢用出去。", ok:true},
+    {t:"支付薪酬屬第二重，購入食材則屬第三重。", ok:false,
+     why:"一半對一半錯。支付薪酬的確是第二重，但購入食材<b>同樣是第二重</b>——兩者都是企業把收到的錢用出去。<br><span style='color:#8FB4D8'>提示：第三重的關鍵是「<b>收錢的人再用錢</b>」，不是企業再付一次錢。</span>"}
+  ],
+  note:"兩句都錯在同一點：把「企業支付出去」當成了第三重。\n企業收到旅客的錢之後，用於支付員工薪酬、購買物資，這是第二重；\n要等到員工把薪金用於消費、儲蓄或交稅，又或東主把利潤再投資，才是第三重。\n關鍵不是錢到了誰手上，而是「這一筆」是誰花出去的。"
+},
+{
+  topic:"旅遊業整合模式",
+  brief:"四位會就這個概念各說兩句。<br>其中一位把某間公司放錯了層。",
+  src:"💡 要點：問一句「這間公司<b>自己有沒有那件貨</b>」——有貨的是供應商",
+  wrong:3,
+  say:[
+    {r:0, e:0, t:"旅遊業整合模式有四個主要元素：核心是旅客，第一層是旅遊推廣者，第二層是旅遊服務供應商，最外圍是六個外在因素。"},
+    {r:0, e:0, t:"旅客是整個模式的核心。如果沒有旅客，旅遊業便不會出現。"},
+    {r:1, e:0, t:"第一層的旅遊推廣者有五個：旅遊局、直接推銷商、旅行代理商、旅行團經營商、會議策劃者。他們自己不提供住宿或交通，只做資訊、安排和銷售。"},
+    {r:1, e:1, t:"第二層的旅遊服務供應商有五類：住宿、餐飲膳食、交通運輸、旅遊目的地、景點及娛樂設施。香港故宮文化博物館屬景點，香港瑰麗酒店屬住宿，兩者都在第二層。"},
+    {r:3, e:0, t:"航空公司屬於第一層，因為它與旅客保持最緊密的聯繫。"},
+    {r:3, e:1, t:"同樣道理，本地酒店也在第一層——旅客可以直接向它訂房。"},
+    {r:2, e:0, t:"分辨的方法只有一條：問這間公司自己有沒有那件貨。有客房、有機位、有景點的，就是供應商。"},
+    {r:2, e:1, t:"舉個例：一間公司做網上平台讓人購買各類旅遊產品，它自己沒有酒店沒有飛機，所以是旅遊推廣者中的旅行代理商。"}
+  ],
+  hints:[
+    "四個主要元素之中，第一層和第二層最容易混淆。有哪一位把某間公司放錯了層？",
+    "再提示：問一句「這間公司自己有沒有那件貨」。有貨的是供應商。誰把有貨的說成第一層？"
+  ],
+  opts:[
+    {t:"航空公司屬第一層，酒店則屬第二層的供應商。", ok:false,
+     why:"兩者是<b>同一類</b>。航空公司擁有機位、酒店擁有客房，同樣是自己提供產品的行業。<br><span style='color:#8FB4D8'>提示：分層看的是「提供什麼」，不是「規模多大」。</span>"},
+    {t:"兩者都屬第二層的旅遊服務供應商，都自己有貨。", ok:true},
+    {t:"兩者都屬第一層，因為旅客可以直接向它們預訂。", ok:false,
+     why:"可不可以直接預訂<b>不是</b>分界線。旅客一樣可以直接上酒店網訂房，但酒店仍然是供應商。<br><span style='color:#8FB4D8'>提示：旅行代理商沒有客房、沒有機位，只做銷售和安排——這才是推廣者。</span>"}
+  ],
+  note:"航空公司自己擁有機位、酒店自己擁有客房，都是直接提供產品和服務的行業，\n同屬第二層的旅遊服務供應商。\n與旅客最緊密接觸的第一層是旅遊推廣者——旅遊局、直接推銷商、旅行代理商、\n旅行團經營商、會議策劃者；他們自己不提供住宿或交通，只做資訊、安排和銷售。"
+},
+{
+  topic:"旅行、旅遊與旅客",
+  brief:"這一課是定義題的地基。<br>常見的問法是：「這個人算不算旅客？」",
+  src:"💡 要點：入境過夜旅客兩個條件都要齊——<b>真正入境</b>，並在當地<b>住宿一晚</b>",
+  wrong:3,
+  say:[
+    {r:3, e:0, t:"在機場轉機貴賓室由晚上八時待到翌日早上的女士，算是入境過夜旅客，因為她在香港過了一夜。"},
+    {r:3, e:1, t:"同樣，參加香港岸上觀光一日遊的郵輪乘客也算——他整天都在香港。"},
+    {r:0, e:0, t:"入境過夜旅客，指旅客為了消閒或公幹在旅遊目的地逗留超過二十四小時，並且在該地住宿最少一晚。"},
+    {r:0, e:0, t:"判斷一個人算不算旅客，共通原則是：如果那個地方是他「慣常生活的環境空間」，就不算。"},
+    {r:1, e:0, t:"例如跨境工人、季節工人、流浪者、難民，還有公共交通工具的工作人員，都在自己慣常生活的環境空間之內。"},
+    {r:1, e:1, t:"外國政府的外交官、軍事人員及隨行家屬，按國際收支平衡原則也不視為駐紮國的旅客，因為他們被視為沒有進入駐紮國的經濟領土。"},
+    {r:2, e:0, t:"灰色地帶看時間：參加不足一年短期課程的學生、住院不足一年的病人，算旅客；一年或以上，就當作在慣常生活的環境空間之內。"},
+    {r:2, e:1, t:"反過來說：機艙服務員在機場酒店住了兩晚、外國總領事來港公幹數天並入住本港酒店，兩者都算入境過夜旅客。"}
+  ],
+  hints:[
+    "入境過夜旅客要同時符合兩個條件。有哪一位只數了其中一個？",
+    "再提示：問兩句——他有沒有真正入境？他當晚睡在哪裡？"
+  ],
+  opts:[
+    {t:"兩者都算，因為都在香港境內逗留超過二十四小時。", ok:false,
+     why:"逗留時間不是唯一條件。轉機的女士根本<b>沒有入境</b>；郵輪乘客<b>沒有在香港住宿</b>。<br><span style='color:#8FB4D8'>提示：「過夜」指的是在當地住宿一晚，不是「人在境內熬了一夜」。</span>"},
+    {t:"兩者都不算，一個沒有入境，一個沒有在港住宿。", ok:true},
+    {t:"轉機的女士不算，但郵輪乘客算，因為他上了岸。", ok:false,
+     why:"上了岸也不夠。他晚上回郵輪睡，香港一晚住宿都沒有。<br><span style='color:#8FB4D8'>提示：兩個條件要齊——入境，加上在當地住宿最少一晚。</span>"}
+  ],
+  note:"轉機的女士只在候機區等候，沒有入境，屬過境旅客；\n郵輪乘客晚上返回船上住宿，沒有在香港住宿，屬郵輪旅客。\n判斷一個人算不算旅客，共通原則是：如果那個地方是他「慣常生活的環境空間」，就不算。"
+},
+{
+  topic:"生態旅遊",
+  brief:"這一回合要判斷一個做法的目的。<br>有一位把它說成了另一回事。",
+  src:"💡 要點：生態旅遊的核心<b>只落在環境</b>——減低影響、保護天然資源",
+  wrong:3,
+  say:[
+    {r:0, e:0, t:"旅遊的形式共有九種：會議獎勵及展覽旅遊、公幹商務旅遊、文化旅遊、環保旅遊、學習旅遊、宗教朝聖、保健旅遊、探訪親友、運動旅遊。"},
+    {r:0, e:0, t:"環保旅遊指旅客喜愛到自然環境旅遊，在旅遊期間盡力減低對環境造成的影響，並小心保護所使用的天然資源。"},
+    {r:1, e:0, t:"有個國家公園把大部分旅客收益——入場費及捐款——用於區內的保育工作，又派導覽員帶團講解。"},
+    {r:1, e:1, t:"導賞團通常有助教育旅客保護環境；旅客本身也會盡量使用較為環保的服務和產品。"},
+    {r:2, e:0, t:"要留意「生態旅遊」和「可持續旅遊」不是同一回事：可持續旅遊涵蓋經濟、社會、環境三方面，生態旅遊的定義只落在環境。"},
+    {r:2, e:1, t:"分辨的方法只有一條：問這個做法在保護什麼。答案是天然資源，就對得上；答案是收入或鄰里關係，就對不上。"},
+    {r:3, e:0, t:"那個國家公園把收益用於保育、又派導覽員帶團，是因為生態旅遊以當地社區的利益為大前提。"},
+    {r:3, e:1, t:"所以發展這類旅遊的主要推動力，其實是道德議題。"}
+  ],
+  hints:[
+    "定義那句由頭到尾只講一樣東西。有哪一位把那個做法的目的說成了別的東西？",
+    "再提示：把收益用於保育、派導覽員帶團——這兩件事在保護什麼？"
+  ],
+  opts:[
+    {t:"社區利益那句對，道德議題那句才是錯的。", ok:false,
+     why:"社區利益那句<b>同樣不對</b>。社區利益泛指經濟、鄰里關係等，並非生態旅遊的目標。<br><span style='color:#8FB4D8'>提示：把定義那句原話讀一次，看看保護的是什麼。</span>"},
+    {t:"兩句都錯：那些做法的目的都是保護環境。", ok:true},
+    {t:"兩句都對，生態旅遊本質就是可持續旅遊。", ok:false,
+     why:"名字相近不等於定義相同。可持續旅遊涵蓋經濟、社會、環境三方面；<b>生態旅遊的定義只落在環境</b>。<br><span style='color:#8FB4D8'>提示：定義那句由頭到尾講的都是環境。</span>"}
+  ],
+  note:"把入場費及捐款用於保育、派導覽員帶團，目的都是<b>減低對環境的影響、保護天然資源</b>。\n社區利益泛指經濟、鄰里關係等，並非生態旅遊的目標；道德議題與生態旅遊亦沒有直接關係。\n兩句都把一個環境目的，說成了另一回事。"
+},
+{
+  topic:"高恆分類法",
+  brief:"探險式與漫遊式是最常混淆的一對。<br>分界線只有一條。",
+  src:"💡 要點：漫遊式旅客<b>不會參加任何旅行團</b>，也不用酒店",
+  wrong:3,
+  say:[
+    {r:0, e:0, t:"高恆按五個準則將旅客分為四類：旅客性格、旅遊目的地、置身於「環境泡泡」的程度、旅程安排、與當地人的交流。"},
+    {r:0, e:0, t:"四類是旅行團群體旅客、個別的群體旅客、探險式旅客、漫遊式旅客。"},
+    {r:3, e:0, t:"有位背包客用六個月遊歷亞洲，行程並非完全固定，有時也參加包酒店住宿的旅行團——他是漫遊式旅客。"},
+    {r:3, e:1, t:"因為漫遊式旅客最富冒險精神、行程不定，正好對得上。"},
+    {r:1, e:0, t:"「環境泡泡」是整套分類法的心臟：一個似回家的熟悉環境，把變化降到可接受水平，是旅客的安全網。"},
+    {r:1, e:1, t:"酒店怎樣造泡泡？能操多國語言的員工、迎合不同種族飲食習慣的食物尤其早餐、旅遊櫃台安排導遊一日團、安全舒適的房間、不同國家的電視頻道。"},
+    {r:2, e:0, t:"探險式和漫遊式最常混淆，分界線是：還要不要舒適和安全。探險式期望乘搭安全的交通工具、選擇舒適的住宿環境；漫遊式不與其他旅客、旅遊供應商與機構有所聯繫，甚至在當地工作以支付旅費。"},
+    {r:2, e:1, t:"同一個人不同時候可以屬不同類型——今次跟團，下次背包。高恆分的是「今次這程」的角色，不是分人。"}
+  ],
+  hints:[
+    "四類旅客之中，有一類是完全不接觸旅遊機構的。有哪一位把接觸過旅行團的人歸了進去？",
+    "再提示：漫遊式旅客會不會參加旅行團？會不會住酒店？"
+  ],
+  opts:[
+    {t:"他是漫遊式旅客，因為行程不固定正是漫遊式特徵。", ok:false,
+     why:"行程不固定的<b>不只</b>漫遊式——探險式的行程同樣並非固定。真正把漫遊式排除的，是他參加過旅行團。<br><span style='color:#8FB4D8'>提示：漫遊式與旅遊供應商及機構的聯繫是多少？</span>"},
+    {t:"他是探險式旅客，同時也是個別的群體旅客。", ok:true},
+    {t:"他是旅行團群體旅客，因為他參加過旅行團。", ok:false,
+     why:"旅行團群體旅客的行程是<b>完全固定</b>的，而這位背包客的行程並非完全固定。<br><span style='color:#8FB4D8'>提示：他只是「有時」參加旅行團，不是全程跟團。</span>"}
+  ],
+  note:"漫遊式旅客不會參加任何旅行團，這位背包客參加過包酒店住宿的旅行團，所以不是。\n行程並非完全固定，符合探險式；有時也參加旅行團，符合個別的群體旅客。\n探險式與漫遊式的分界線是：還要不要舒適和安全。"
+},
+{
+  topic:"蒲樂分類法",
+  brief:"這一回合要判斷一個例子。<br>有一位把旅客的性格配錯了類型。",
+  src:"💡 要點：探奇型去<b>冷門或尚未開發</b>的地方；中庸型去<b>已發展成熟</b>的地方",
+  wrong:3,
+  say:[
+    {r:0, e:0, t:"蒲樂按旅客性格分為三型：探奇型、保守型、中庸型；再細分為五類——接近保守型、保守型、中庸型、探奇型、接近探奇型。"},
+    {r:0, e:0, t:"保守型重視安全與保安，不喜歡冒險，去的是熟悉或與居住環境相近的目的地，而且會舊地重遊。"},
+    {r:1, e:0, t:"中庸型並非特別喜歡冒險，需要一定程度的安全和保安，喜歡在受控制的環境下得到新體驗。"},
+    {r:1, e:1, t:"所以中庸型去的是已發展成熟、但自己不一定熟悉的目的地；接受新鮮的酒店體驗，但希望住得較為舒適。"},
+    {r:3, e:0, t:"有位旅客外向獨立、有自信心、有冒險精神，專門去冷門或尚未開發的目的地——他是中庸型旅客。"},
+    {r:3, e:1, t:"因為中庸型旅客同樣願意接納和嘗試新的事物。"},
+    {r:2, e:0, t:"接近探奇型與探奇型有許多共同之處但相對謹慎，喜歡舒適住宿及信賴的膳食；接近保守型不愛冒險，偏向熟悉地方，往往是重複到訪的旅客。"},
+    {r:2, e:1, t:"還有一條線索：目的地處於發掘階段時遊客數量很少、主要是尋求新奇和冒險的旅客，最能吸引的正是性格最愛冒險的那一型。"}
+  ],
+  hints:[
+    "五類性格之中，有一類專門去冷門或尚未開發的地方。有哪一位把例子配錯了類型？",
+    "再提示：中庸型去的是「已發展成熟」的目的地。那麼冷門而尚未開發的，屬哪一型？"
+  ],
+  opts:[
+    {t:"他是中庸型，但目的地應寫成已發展成熟的地方。", ok:false,
+     why:"錯的不是目的地，是<b>類型</b>。他去的正是冷門或尚未開發的地方，而中庸型不會這樣選。<br><span style='color:#8FB4D8'>提示：不要改例子去遷就類型，要改類型去對上例子。</span>"},
+    {t:"他是探奇型，中庸型只去已發展成熟的目的地。", ok:true},
+    {t:"他是接近探奇型，因為他仍會要求舒適住宿。", ok:false,
+     why:"例子<b>沒有提過</b>住宿要求，不能據此判斷。接近探奇型的分界線正是「喜歡舒適住宿及信賴的膳食」。<br><span style='color:#8FB4D8'>提示：資料沒寫的，不要自己補上去。</span>"}
+  ],
+  note:"探奇型外向獨立、有自信心、有冒險精神，追求新穎的體驗，去的是冷門或尚未開發的目的地，\n只要求簡單而合乎基本要求的住宿、交通和食物。\n中庸型並非特別喜歡冒險，喜歡在受控制的環境下得到新體驗，去已發展成熟但自己不一定熟悉的目的地。\n至於接近探奇型，分界線是「相對謹慎、喜歡舒適住宿」——例子沒有提到住宿要求，不能據此判斷。"
+}
+];
+/* ⚠ 用戶要求「每回合都係隨機角色組合，配以隨機主題」。
+   所以回合資料入面**唔再寫死邊個角色**：對白只寫崗位編號 r（0 落定義／1 舉例／
+   2 補充應用／3 講錯），開局先隨機派世界、再隨機派邊個成員做邊個崗位。
+   咁樣同一個課題，今次可能係古洛博士講錯，下次係貓婆講錯。
+
+   ⚠ 美術素材係**一套角色一個資料夾**（用戶要求，避免混亂）：
+       art/<dir>/<f>-1..3.webp   四個角色 × 三個表情（平常／自信／心虛）
+       art/<dir>/yhp-1..3.webp   YHP 喺呢個世界嘅造型
+       art/<dir>/bg.webp         場景
+   所以 YHP 唔再需要 yhps／yhpy 咁樣改前綴——每個資料夾入面都叫 yhp。
+   n = 顯示嘅名　f = 檔名前綴。*/
+var WORLDS = [
+  { dir:"briefing", cast:[{n:"韋教授",f:"wai"},{n:"阿May",f:"may"},{n:"阿祖",f:"joe"},{n:"陳主任",f:"chen"}] },
+  { dir:"space",    cast:[{n:"古洛博士",f:"gulo"},{n:"咪咪",f:"mimi"},{n:"洛奇",f:"loki"},{n:"加加隊長",f:"gaga"}] },
+  { dir:"market",   cast:[{n:"燈伯",f:"lamp"},{n:"阿狸",f:"tanu"},{n:"河小太",f:"kapa"},{n:"貓婆",f:"neko"}] },
+  { dir:"stage",    cast:[{n:"雷奧",f:"leo"},{n:"星兒",f:"sing"},{n:"金哥",f:"gam"},{n:"阿豆",f:"dou"}] },
+  { dir:"zoo",      cast:[{n:"團團",f:"pan"},{n:"高高",f:"gir"},{n:"波波",f:"pen"},{n:"慢慢",f:"slo"}] },
+  { dir:"kaiju",    cast:[{n:"岩王",f:"roc"},{n:"翼影",f:"win"},{n:"焰牙",f:"fan"},{n:"苔老",f:"mos"}] },
+  { dir:"stunt",    cast:[{n:"阿雷",f:"rai"},{n:"小燕",f:"yin"},{n:"火哥",f:"fir"},{n:"鐵拳",f:"tit"}] },
+  { dir:"fairy",    cast:[{n:"露娜",f:"lun"},{n:"苔苔",f:"tai"},{n:"叮叮",f:"din"},{n:"老根",f:"gan"}] },
+  { dir:"fruit",    cast:[{n:"橙先生",f:"ora"},{n:"莓莓",f:"mui"},{n:"蕉伯",f:"zui"},{n:"瓜仔",f:"gwa"}] },
+  { dir:"ocean",    cast:[{n:"章魚博士",f:"oct"},{n:"水母娘",f:"jel"},{n:"龜爺",f:"gwi"},{n:"阿橘",f:"clo"}] },
+  { dir:"abstract", cast:[{n:"方先生",f:"squ"},{n:"圓小姐",f:"cir"},{n:"三角君",f:"tri"},{n:"波浪",f:"wav"}] }
+];
+var CAST = {};
+var YHP = {
+  /* ⚠ 唔好再包一重「」—— 課題名本身可能已經有引號,
+     會變成「經濟「流失」」咁樣套住引號。用破折號帶出就冇呢個問題。*/
+  open: ["這個回合，我們討論的是——__TOPIC__。",
+         "留意四位的說法，其中一位說錯了——讀到不對勁的一句，就按下「反對！」。"],
+  wrong: "這句與課本一致，並無問題。尚餘 __N__ 次機會，再看真一點。",
+  done:  ["做得好，你捉到重點了。", "準備好就進入下一回合。"],
+  fin:   ["兩個回合都完成了，這一課你已經掌握。", "（原型到此為止。）"]
+};
+function art(k,e){
+  var c=CAST[k];                       /* 查唔到就當 k 本身係檔名前綴 */
+  return "art/"+WORLDS[ROUND.w].dir+"/"+(c&&c.f?c.f:k)+"-"+(e+1)+".webp";
+}
+function setScene(){
+  var w=WORLDS[ROUND.w];
+  CAST={};
+  for(var i=0;i<4;i++) CAST[i]=w.cast[ROUND.p[i]];   /* 崗位 → 世界成員 */
+  CAST.yhp={n:"YHP",f:"yhp"};
+  el("stage").style.backgroundImage="url(art/"+w.dir+"/bg.webp)";
+}
+/* ── 成績記錄：寫返落主 app 同一個進度物件,再 POST 上同一個 Apps Script ──
+   ⚠ 主 app（index.html）嘅 syncDown 會用雲端資料**覆蓋**本機 progress。
+     所以遊戲淨係寫 localStorage 係唔夠嘅——學生下次開主 app 就會被蓋走。
+     一定要 POST。而 POST 之前要先 GET：本機 progress 可能係舊嘅,
+     直接傳上去會用舊資料蓋死學生喺雲端嘅溫習記錄,救唔返。 */
+var STORAGE_KEY="thsPassportV3", STU_KEY="thsStudentV1";
+var SYNC_URL="https://script.google.com/macros/s/AKfycbzIe2hv849CjBheI7zGQT704uAQAfOQlAVWUc8HoukiZFSIKemm7LqzLHoImhn8plwr/exec";
+var SYNC_KEY="yhp-2026";
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch(e){ return null; } }
+function mergeGame(base, rounds){
+  var p = base && typeof base==="object" ? base : {};
+  if(!p.books) p.books={};
+  if(!p.dse)   p.dse={};
+  var g = p.game || {plays:0, best:0};
+  g.plays = (Number(g.plays)||0) + 1;
+  g.best  = Math.max(Number(g.best)||0, rounds);
+  g.last  = new Date().toISOString();
+  p.game = g;
+  return p;
+}
+function saveResult(rounds){
+  var stu = lsGet(STU_KEY);
+  if(!stu || !stu.name){ note("未登入,今局唔會記錄"); return; }   /* 直接開 court.html、未經主 app 登入 */
+  var local = lsGet(STORAGE_KEY) || {books:{}, dse:{}};
+  function finish(base, viaCloud){
+    var p = mergeGame(base, rounds);
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); }catch(e){}
+    if(!viaCloud){ note("離線,成績暫存喺本機"); return; }
+    fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({key:SYNC_KEY,id:stu.id||stu.name,name:stu.name,cls:stu.cls||"",progress:p})})
+      .then(function(r){return r.json();})
+      .then(function(d){ note(d&&d.ok ? "成績已記錄 ✓" : "記錄失敗"); })
+      .catch(function(){ note("離線,成績暫存喺本機"); });
+  }
+  var done=false;
+  setTimeout(function(){ if(!done){ done=true; finish(local,false); } },7000);  /* fetch 冇 timeout,唔加會卡死 */
+  fetch(SYNC_URL+"?key="+encodeURIComponent(SYNC_KEY)+"&id="+encodeURIComponent(stu.id||stu.name))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(done) return; done=true;
+      finish((d&&d.ok&&d.found&&d.progress) ? d.progress : local, true);
+    })
+    .catch(function(){ if(!done){ done=true; finish(local,false); } });
+}
+function note(msg){
+  var e=el("gnote"); if(!e) return;
+  e.textContent=msg; e.classList.add("on");
+  setTimeout(function(){ e.classList.remove("on"); },2600);
+}
+
+/* 洗牌（Fisher–Yates）*/
+function shuffled(n){
+  var a=[],i,j,t; for(i=0;i<n;i++) a.push(i);
+  for(i=n-1;i>0;i--){ j=Math.floor(Math.random()*(i+1)); t=a[i];a[i]=a[j];a[j]=t; }
+  return a;
+}
+/* 開局派牌：主題次序洗一次,世界洗一次再輪住派,每個回合再洗一次崗位。
+   ⚠ 世界要用「洗好嘅次序輪住派」唔可以每回合獨立 random —— 獨立 random
+     會出現連續兩個回合撞同一個世界,用戶明確要求每回合唔同。*/
+function deal(){
+  ORDER=shuffled(ROUNDS.length);
+  var ws=shuffled(WORLDS.length);
+  for(var i=0;i<ORDER.length;i++){
+    var R=ROUNDS[ORDER[i]];
+    R.w=ws[i%ws.length];
+    R.p=shuffled(4);
+    /* ⚠ 三個選項一定要洗牌。寫稿嗰陣順手把正解擺同一個位,實測 311 套之中
+       第一冊全部喺 B、第二至四冊加寫全部喺 A —— 玩幾個回合就會發現規律,
+       玩家唔使睇內容都撳得中。喺呢度洗,無論份稿點寫都唔會漏。*/
+    var op=shuffled(3), no=[];
+    for(var k=0;k<3;k++) no.push(R.opts[op[k]]);
+    R.opts=no;
+  }
+}
+
+var el=function(i){return document.getElementById(i);};
+var ORDER=[], ri=0, ROUND=null;
+var CN="一二三四五六七八九十";
+var i=0, life=3, phase="intro", typing=null, yi=0, yq=[];
+
+function setWho(src){
+  var w=el("who");
+  w.onerror=function(){ w.style.visibility="hidden"; };
+  w.onload =function(){ w.style.visibility="visible"; };
+  w.src=src;
+}
+
+/* ── 「反對！」衝擊圖（純 SVG） ──
+   ⚠ X 同 Y 半徑要分開。共用一個 R 嘅話上下尖角會畫出 viewBox 之外被裁走。*/
+function burstPath(cx,cy,Rx,Ry,rx,ry,n,seed){
+  var p=[],a,f,ex,ey;
+  for(var k=0;k<n*2;k++){
+    a=Math.PI*2*k/(n*2)-Math.PI/2;
+    f=0.86+0.28*((Math.sin(seed+k*2.7)+1)/2);
+    ex=(k%2?rx:Rx)*f; ey=(k%2?ry:Ry)*f;
+    p.push((k?"L":"M")+(cx+Math.cos(a)*ex).toFixed(1)+" "+(cy+Math.sin(a)*ey).toFixed(1));
+  }
+  return p.join("")+"Z";
+}
+function boomSVG(){
+  return '<svg viewBox="0 0 520 340" xmlns="http://www.w3.org/2000/svg">'+
+    '<path d="'+burstPath(260,170,220,142,124,80,17,1.7)+'" fill="#FFFFFF" stroke="#0A0A0A" stroke-width="7" stroke-linejoin="round"/>'+
+    '<g transform="rotate(-4 260 170)" font-family="\'PingFang HK\',\'Noto Sans HK\',sans-serif" '+
+      'font-weight="900" font-size="122" fill="#D6202A" stroke="#3A0509" stroke-width="9" '+
+      'paint-order="stroke" dominant-baseline="middle">'+
+      '<text x="214" y="172" text-anchor="middle" letter-spacing="-6">反對</text>'+
+      '<text x="372" y="170" text-anchor="middle">!</text>'+
+    '</g></svg>';
+}
+
+function hearts(){
+  var h=""; for(var n=0;n<3;n++) h+='<i class="'+(n<life?"":"off")+'"></i>';
+  el("hp").innerHTML=h;
+}
+function type(txt){
+  clearInterval(typing);
+  el("line").textContent=""; el("next").style.display="none";
+  var n=0;
+  typing=setInterval(function(){
+    el("line").textContent=txt.slice(0,++n);
+    if(n>=txt.length){ clearInterval(typing); typing=null; el("next").style.display=""; }
+  },22);
+}
+function clearOpts(){
+  var o=el("box").querySelector(".opts"); if(o) o.remove();
+  el("box").classList.remove("tall");
+}
+function render(){
+  var d=ROUND.say[i];
+  setWho(art(d.r,d.e));
+  el("plate").textContent=CAST[d.r].n;
+  type(d.t);
+  el("pos").textContent=(i+1)+" / "+ROUND.say.length;
+  /* ⚠ 一定要標示循環。用戶試玩時撳到最後一句再撳,返咗第一句,
+     但因為冇任何提示,佢以為系統跳咗去第二個回合。*/
+  var last = (i===ROUND.say.length-1);
+  el("nextb").textContent = last ? "回第一句 ↻" : "下一句 ▶";
+  el("next").textContent  = last ? "↻" : "▼";
+}
+/* ⚠ 翻頁要循環 —— 睇到最後一句撳「下一句」應該返到第一句,
+   唔係死咗喺度（用戶要求可以重複讀）。所以兩個掣都唔會 disabled。*/
+function step(d){
+  if(phase!=="say") return;
+  i=(i+d+ROUND.say.length)%ROUND.say.length;
+  render();
+}
+function tap(){
+  if(phase!=="say") return;
+  if(typing){ clearInterval(typing); typing=null;
+    el("line").textContent=ROUND.say[i].t; el("next").style.display=""; return; }
+  step(1);
+}
+
+/* ── 反對！ ── */
+function objection(){
+  if(phase!=="say") return;
+  if(ROUND.say[i].r!==ROUND.wrong){
+    life--; hearts();
+    clearInterval(typing); typing=null;
+    if(life<=0){ saveResult(ri);          /* 死喺第 ri+1 個回合 → 完成咗 ri 個 */
+      phase="over"; el("bar").style.display="none";
+      setWho(art("yhp",1)); el("plate").textContent=CAST.yhp.n;
+      type("說服力不足……我們再來一次吧。"); return; }
+    /* 指錯人：YHP 除咗提醒仲要俾提示,而且提示要遞進（錯得多俾多啲） */
+    var hk = Math.min(3-life-1, (ROUND.hints||[]).length-1);
+    var msg = [YHP.wrong.replace("__N__",life)];
+    if(hk>=0 && ROUND.hints) msg.push(ROUND.hints[hk]);
+    yhpSay(msg,1,function(){
+      phase="say"; el("bar").style.display=""; render();
+    });
+    return;
+  }
+  phase="boom";
+  var b=el("boom"); b.innerHTML=boomSVG(); b.classList.add("on");
+  el("bar").style.display="none";
+  setTimeout(function(){ b.classList.remove("on"); b.innerHTML=""; explain(); },900);
+}
+function explain(){
+  phase="explain";
+  setWho(art(ROUND.wrong,2));
+  el("who").classList.add("shake");
+  setTimeout(function(){ el("who").classList.remove("shake"); },400);
+  clearInterval(typing); typing=null;
+  el("plate").textContent="異議！";
+  /* ⚠ 唔可以寫「他錯在哪裡」—— 班底而家有女性妖怪(貓婆)、有一盞燈籠(燈伯)、
+     有外星人,任何人稱都會出錯。索性剷走人稱。*/
+  el("line").innerHTML="<b style='color:#FFD84A'>"+CAST[ROUND.wrong].n+"這番話有問題。</b><br>錯在哪裡？";
+  el("next").style.display="none";
+  el("box").classList.add("tall");
+  var h='<div class="opts">';
+  ROUND.opts.forEach(function(o,n){ h+='<button class="opt" data-n="'+n+'"><b>'+"ABC"[n]+'</b>'+o.t+'</button>'; });
+  el("box").insertAdjacentHTML("beforeend",h+"</div>");
+  el("box").querySelectorAll(".opt").forEach(function(b){
+    b.addEventListener("click",function(ev){ ev.stopPropagation(); pickOpt(+b.dataset.n,b); });
+  });
+}
+function pickOpt(n,btn){
+  if(phase!=="explain") return;
+  if(!ROUND.opts[n].ok){
+    btn.className="opt no"; btn.disabled=true;
+    life--; hearts();
+    if(life<=0){ saveResult(ri);          /* 死喺第 ri+1 個回合 → 完成咗 ri 個 */
+      phase="over"; clearOpts();
+      setWho(art("yhp",1)); el("plate").textContent=CAST.yhp.n;
+      type("說服力不足……我們再來一次吧。"); return; }
+    /* 答錯要講清楚錯喺邊 ＋ 俾提示。⚠ 用替換而唔係追加 ——
+       追加落去個框會撐高,連塊面都遮返。*/
+    el("plate").textContent="不對";
+    el("line").innerHTML="<b style='color:#FF9BBA'>"+"ABC"[n]+" 不正確。</b><br>"+
+      (ROUND.opts[n].why||"再想清楚。");
+    return;
+  }
+  /* ⚠ 答啱之後即刻剷走選項 —— 唔剷嘅話個框連結語一齊撐到成塊面都遮晒
+     （用戶回報過兩次）。而且亦唔再需要「聽 YHP 講」掣,撳一下就過。*/
+  phase="result";
+  clearOpts();
+  el("plate").textContent="指證成立";
+  el("line").innerHTML="<b style='color:#5ADCA0'>指證成立。</b>（正確答案："+"ABC"[n]+"）<br>"+
+    ROUND.note.replace(/\n/g,"<br>")+
+    "<br><span style='color:#8C9BB2;font-size:.86rem'>"+ROUND.src+"</span>";
+  el("next").style.display="";
+}
+
+/* ── YHP ── */
+function yhpSay(lines,expr,after){
+  yq=lines.slice(); yi=0; phase="yhp";
+  el("bar").style.display="none";
+  clearOpts();
+  setWho(art("yhp",expr));
+  el("plate").textContent=CAST.yhp.n;
+  type(yq[0]);
+  window.__after=after;
+}
+function yhpStep(){
+  if(phase!=="yhp") return;
+  if(typing){ clearInterval(typing); typing=null;
+    el("line").textContent=yq[yi]; el("next").style.display=""; return; }
+  yi++;
+  if(yi<yq.length){ type(yq[yi]); return; }
+  var f=window.__after; window.__after=null;
+  if(f) f();
+}
+
+/* ── 回合流程 ── */
+var coverT=null;
+function showCover(txt,then){
+  phase="cover";
+  /* ⚠ 封面個暗罩淺(想睇到背景),所以對白框同角色圖會透晒出嚟,仲會遮住「第X回合」。
+     .intro 嗰個罩夠深先睇唔到。封面期間要真係收起佢哋。*/
+  el("box").style.display="none";
+  el("who").style.visibility="hidden";
+  el("coverRd").textContent=txt;
+  var c=el("cover");
+  c.classList.remove("out"); c.style.display="";
+  clearTimeout(coverT);
+  coverT=setTimeout(function(){ hideCover(then); },1500);
+}
+function hideCover(then){
+  if(phase!=="cover") return;            /* ⚠ 撳同計時器會撞,要擋住行兩次 */
+  clearTimeout(coverT);
+  var c=el("cover");
+  c.classList.add("out");
+  setTimeout(function(){
+    c.style.display="none";
+    el("box").style.display=""; el("who").style.visibility="";
+    if(then) then();
+  },380);
+}
+function showIntro(){
+  phase="intro";
+  setScene();                          /* ⚠ 要喺 intro 就換,唔係開場先換,
+                                          否則封面會用返上一個回合嘅背景。*/
+  /* ⚠ 回合號要跟「今局第幾個」計,唔可以寫死喺資料入面 —— 主題洗過牌。*/
+  el("intro").querySelector(".rd").textContent="第 "+CN.charAt(ri)+" 回 合";
+  el("topic").textContent=ROUND.topic;
+  el("brief").innerHTML=ROUND.brief;
+  el("src").innerHTML=ROUND.src;      /* ⚠ 要點入面有 <b>,用 textContent 會照原樣印出標籤 */
+  el("bar").style.display="none";
+  /* 封面行先,淡出之後先見到呢版資訊 */
+  el("intro").style.display="none";
+  showCover(el("intro").querySelector(".rd").textContent, function(){
+    phase="intro"; el("intro").style.display="";
+  });
+}
+function startRound(){
+  el("intro").style.display="none";
+  i=0; life=3; hearts();
+  yhpSay(YHP.open.map(function(t){ return t.replace("__TOPIC__",ROUND.topic); }),0,
+    function(){ phase="say"; el("bar").style.display=""; render(); });
+}
+function nextRound(){
+  ri++;
+  if(ri>=ORDER.length){
+    saveResult(ORDER.length);                 /* 全部回合完成 */
+    yhpSay(YHP.fin,2,function(){ phase="over"; el("next").style.display="none"; });
+    return;
+  }
+  ROUND=ROUNDS[ORDER[ri]];
+  showIntro();
+}
+
+el("cover").addEventListener("click",function(){
+  hideCover(function(){ phase="intro"; el("intro").style.display=""; });
+});
+el("go").addEventListener("click",startRound);
+el("box").addEventListener("click",function(){
+  if(phase==="yhp") yhpStep();
+  else if(phase==="result"){ yhpSay(YHP.done,2,nextRound); }   // 一撳就過,唔使按鈕
+  else tap();
+});
+el("prev").addEventListener("click",function(){ step(-1); });
+el("nextb").addEventListener("click",function(){ step(1); });
+el("obj").addEventListener("click",objection);
+document.addEventListener("keydown",function(e){
+  if(phase==="cover"){                   /* 封面期間任何掣都係「跳過」,唔可以跌落去翻頁／反對 */
+    hideCover(function(){ phase="intro"; el("intro").style.display=""; });
+    e.preventDefault(); return;
+  }
+  if(phase==="intro") return;            /* ⚠ 開場期間本來冇擋,撳 Enter 會偷偷叫 objection() */
+  if(phase==="yhp"){ if(e.key===" "||e.key==="Enter") yhpStep(); return; }
+  if(phase==="result"){ if(e.key===" "||e.key==="Enter") yhpSay(YHP.done,2,nextRound); return; }
+  if(e.key==="ArrowLeft") step(-1);
+  else if(e.key==="ArrowRight") step(1);
+  else if(e.key===" ") tap();
+  else if(e.key==="Enter") objection();
+});
+/* ⚠ 封面一開就要見到新背景。第一次去某個世界時張圖未解碼,會閃一下上一個回合嘅背景 ——
+   喺封面度最刺眼。11 張 bg 加埋約 1.3MB,開場預載晒就唔會閃。*/
+WORLDS.forEach(function(w){ var im=new Image(); im.src="art/"+w.dir+"/bg.webp"; });
+
+deal(); ri=0; ROUND=ROUNDS[ORDER[0]];
+hearts(); showIntro();
+})();
+</script>
