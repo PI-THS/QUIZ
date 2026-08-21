@@ -131,6 +131,14 @@ body{margin:0;background:#101820;min-height:100dvh;
   display:flex;align-items:center;justify-content:center;text-decoration:none;
   background:rgba(8,14,26,.5);color:#CFE0F5;font-size:calc(1.78 * var(--u));}
 .gback:hover{background:rgba(8,14,26,.75);}
+/* 三次用完之後出嘅重玩掣。擺喺對話框上面正中,唔會壓住 YHP 講嗰句。*/
+.again{position:absolute;left:50%;bottom:30%;transform:translateX(-50%);z-index:11;
+  border:2px solid #050B15;border-radius:8px;
+  padding:calc(1.07 * var(--u)) calc(3.2 * var(--u));min-height:34px;
+  background:linear-gradient(180deg,#5AB0DC,#2A6FA8);color:#fff;
+  font:inherit;font-size:calc(1.78 * var(--u));font-weight:800;letter-spacing:.1em;
+  cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.35);}
+.again:hover{filter:brightness(1.1);}
 
 /* ── 底部控制列 ── */
 .bar{position:absolute;left:2.2%;right:2.2%;bottom:.5%;z-index:6;
@@ -146,8 +154,9 @@ body{margin:0;background:#101820;min-height:100dvh;
 .bar .obj{background:linear-gradient(180deg,#E8434A,#B21F26);color:#fff;
   border-color:#3A0A0C;letter-spacing:.14em;padding:calc(.6 * var(--u)) calc(1.96 * var(--u));}
 .bar .obj:hover{filter:brightness(1.12);}
-/* 全螢幕掣。⚠ 唔係所有瀏覽器都支援（iPhone Safari 一直冇 element fullscreen）,
-   所以預設 hidden,偵測到支援先顯示 —— 擺個撳極都冇反應嘅掣出嚟更差。*/
+/* 全螢幕掣。⚠ iPhone Safari 一直冇 element fullscreen API（iPad 有）。
+   我一開始寫「偵測到唔支援就收起」,結果 iPhone 用戶完全見唔到個掣,以為壞咗。
+   → 改為**照樣顯示**,撳落去彈返「加到主畫面」嘅指示,比隱形好。*/
 .bar .fs{padding:calc(.57 * var(--u)) calc(.9 * var(--u));
   font-size:calc(1.7 * var(--u));line-height:1;
   /* ⚠ 呢個掣主要喺手機撳,唔可以淨係跟畫面縮放 —— 實測手機打橫得 26×24px,手指撳唔中。
@@ -203,10 +212,11 @@ body{margin:0;background:#101820;min-height:100dvh;
     <button id="nextb">下一句 ▶</button>
     <span class="sp"></span>
     <button class="obj" id="obj">反　對！</button>
-    <button class="fs" id="fs" title="全螢幕" aria-label="全螢幕" hidden>⛶</button>
+    <button class="fs" id="fs" title="全螢幕" aria-label="全螢幕">⛶</button>
   </div>
   <div class="boom" id="boom"></div>
   <div class="gnote" id="gnote"></div>
+  <button class="again" id="again" hidden>再挑戰一次</button>
   <a class="gback" href="../index.html" title="返回溫習神器">←</a>
   <div class="cover" id="cover"><div class="rn" id="coverRd">第 一 回 合</div></div>
   <div class="intro" id="intro">
@@ -661,7 +671,7 @@ function objection(){
     if(life<=0){ saveResult(ri);          /* 死喺第 ri+1 個回合 → 完成咗 ri 個 */
       phase="over"; el("bar").style.display="none";
       setWho(art("yhp",1)); el("plate").textContent=CAST.yhp.n;
-      type("說服力不足……我們再來一次吧。"); return; }
+      gameOver(); return; }
     /* 指錯人：YHP 除咗提醒仲要俾提示,而且提示要遞進（錯得多俾多啲） */
     var hk = Math.min(3-life-1, (ROUND.hints||[]).length-1);
     var msg = [YHP.wrong.replace("__N__",life)];
@@ -703,7 +713,7 @@ function pickOpt(n,btn){
     if(life<=0){ saveResult(ri);          /* 死喺第 ri+1 個回合 → 完成咗 ri 個 */
       phase="over"; clearOpts();
       setWho(art("yhp",1)); el("plate").textContent=CAST.yhp.n;
-      type("說服力不足……我們再來一次吧。"); return; }
+      gameOver(); return; }
     /* 答錯要講清楚錯喺邊 ＋ 俾提示。⚠ 用替換而唔係追加 ——
        追加落去個框會撐高,連塊面都遮返。*/
     el("plate").textContent="不對";
@@ -789,11 +799,26 @@ function startRound(){
   yhpSay(YHP.open.map(function(t){ return t.replace("__TOPIC__",ROUND.topic); }),0,
     function(){ phase="say"; el("bar").style.display=""; render(); });
 }
+/* 三條命用完。⚠ 唔可以淨係出句對白就算 —— 玩家會唔知點再玩,唯有 reload。
+   出返粒掣,由第一回合重新開始（會重新洗牌,主題／世界／選項次序都唔同）。*/
+function gameOver(){
+  type("三次機會用完了，請努力溫習再來挑戰吧！");
+  el("again").hidden=false;
+}
+function restart(){
+  el("again").hidden=true;
+  deal(); ri=0; ROUND=ROUNDS[ORDER[0]];
+  life=3; hearts();
+  showIntro();
+}
 function nextRound(){
   ri++;
   if(ri>=ORDER.length){
     saveResult(ORDER.length);                 /* 全部回合完成 */
-    yhpSay(YHP.fin,2,function(){ phase="over"; el("next").style.display="none"; });
+    yhpSay(YHP.fin,2,function(){
+      phase="over"; el("next").style.display="none";
+      el("again").hidden=false;               /* 贏咗一樣要有得再玩,否則都係死胡同 */
+    });
     return;
   }
   ROUND=ROUNDS[ORDER[ri]];
@@ -809,10 +834,12 @@ function fsPaint(){
   b.textContent = fsOn() ? "⛝" : "⛶";
   b.title = b.ariaLabel = fsOn() ? "離開全螢幕" : "全螢幕";
 }
-if(fsCan()){
-  el("fs").hidden=false;
-  el("fs").addEventListener("click",function(ev){
+el("fs").addEventListener("click",function(ev){
     ev.stopPropagation();
+    if(!fsCan()){                        /* iPhone Safari 行呢條路 */
+      note("iPhone 請用「分享 → 加到主畫面」,由圖示開就係全螢幕");
+      return;
+    }
     /* ⚠ requestFullscreen() 回傳 promise,失敗係 **reject** 唔係 throw ——
        只寫 try/catch 接唔到,用戶就會見到「撳極都冇反應」,連個原因都唔知。
        實測 iframe／權限受限嘅環境會 reject 一個 "Permissions check failed"。*/
@@ -822,17 +849,17 @@ if(fsCan()){
                  : (fsEl.requestFullscreen||fsEl.webkitRequestFullscreen).call(fsEl);
     }catch(e){ note("呢個瀏覽器唔支援全螢幕"); return; }
     if(p && p.catch) p.catch(function(){ note("呢個瀏覽器唔准全螢幕"); });
-  });
-  ["fullscreenchange","webkitfullscreenchange"].forEach(function(t){
-    document.addEventListener(t,fsPaint);
-  });
-  fsPaint();
-}
+});
+["fullscreenchange","webkitfullscreenchange"].forEach(function(t){
+  document.addEventListener(t,fsPaint);
+});
+fsPaint();
 
 el("cover").addEventListener("click",function(){
   hideCover(function(){ phase="intro"; el("intro").style.display=""; });
 });
 el("go").addEventListener("click",startRound);
+el("again").addEventListener("click",function(ev){ ev.stopPropagation(); restart(); });
 el("box").addEventListener("click",function(){
   if(phase==="yhp") yhpStep();
   else if(phase==="result"){ yhpSay(YHP.done,2,nextRound); }   // 一撳就過,唔使按鈕
